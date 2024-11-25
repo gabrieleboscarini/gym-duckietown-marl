@@ -2,7 +2,7 @@
 
 import os
 import numpy as np
-import gym
+import gymnasium as gym
 from gym_duckietown.envs import DuckietownEnv, MultiMapEnv
 from gym_duckietown.simulator import get_agent_corners
 from gym_duckietown.wrappers import PyTorchObsWrapper

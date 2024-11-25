@@ -8,7 +8,7 @@ using the keyboard arrows.
 import argparse
 import sys
 
-import gym
+import gymnasium as gym
 from pyglet import app, clock
 from pyglet.window import key
 

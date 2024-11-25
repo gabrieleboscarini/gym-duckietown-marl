@@ -6,7 +6,7 @@ import math
 import sys
 
 import cv2
-import gym
+import gymnasium as gym
 import numpy
 import numpy as np
 import pyglet

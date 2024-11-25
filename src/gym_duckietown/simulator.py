@@ -15,7 +15,7 @@ from typing import Any, cast, Dict, List, NewType, Optional, Sequence, Tuple, Un
 
 import geometry
 import geometry as g
-import gym
+import gymnasium as gym
 import math
 import numpy as np
 import pyglet

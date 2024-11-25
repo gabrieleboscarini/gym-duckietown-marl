@@ -13,7 +13,7 @@ import math
 import torch
 
 import numpy as np
-import gym
+import gymnasium as gym
 
 from utils.env import launch_env
 from utils.wrappers import NormalizeWrapper, ImgWrapper, DtRewardWrapper, ActionWrapper, ResizeWrapper

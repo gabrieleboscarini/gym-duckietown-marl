@@ -9,7 +9,7 @@ from PIL import Image
 import argparse
 import sys
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pyglet
 from pyglet.window import key

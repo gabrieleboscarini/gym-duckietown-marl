@@ -9,7 +9,7 @@ import argparse
 import json
 import sys
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pyglet
 from pyglet.window import key

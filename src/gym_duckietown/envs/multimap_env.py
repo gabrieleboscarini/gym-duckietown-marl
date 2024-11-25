@@ -1,5 +1,5 @@
 # coding=utf-8
-import gym
+import gymnasium as gym
 
 from .duckietown_env import DuckietownEnv
 
