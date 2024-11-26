@@ -1,6 +1,6 @@
 # coding=utf-8
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 
 from ..simulator import Simulator
 from .. import logger

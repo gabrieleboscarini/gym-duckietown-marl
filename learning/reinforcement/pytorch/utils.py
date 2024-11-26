@@ -59,7 +59,7 @@ class ReplayBuffer(object):
 def evaluate_policy(env, policy, eval_episodes=10, max_timesteps=500):
     avg_reward = 0.0
     for _ in range(eval_episodes):
-        obs = env.reset()
+        obs, _ = env.reset()
         done = False
         step = 0
         while not done and step < max_timesteps:

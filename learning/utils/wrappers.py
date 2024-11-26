@@ -1,5 +1,5 @@
 import gymnasium as gym
-from gym import spaces
+from gymnasium import spaces
 import numpy as np
 
 from gym_duckietown.simulator import Simulator
@@ -38,7 +38,7 @@ class MotionBlurWrapper(Simulator):
 
 class ResizeWrapper(gym.ObservationWrapper):
     def __init__(self, env=None, shape=(120, 160, 3)):
-        super(ResizeWrapper, self).__init__(env)
+        super().__init__(env)
         self.observation_space.shape = shape
         self.observation_space = spaces.Box(
             self.observation_space.low[0, 0, 0],

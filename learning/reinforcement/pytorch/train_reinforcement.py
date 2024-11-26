@@ -6,10 +6,10 @@ import os
 import numpy as np
 
 # Duckietown Specific
-from reinforcement.pytorch.ddpg import DDPG
-from reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
-from utils.env import launch_env
-from utils.wrappers import NormalizeWrapper, ImgWrapper, DtRewardWrapper, ActionWrapper, ResizeWrapper
+from learning.reinforcement.pytorch.ddpg import DDPG
+from learning.reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
+from learning.utils.env import launch_env
+from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, DtRewardWrapper, ActionWrapper, ResizeWrapper
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -81,7 +81,7 @@ def _train(args):
 
             # Reset environment
             env_counter += 1
-            obs = env.reset()
+            obs, _ = env.reset()
             done = False
             episode_reward = 0
             episode_num += 1

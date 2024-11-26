@@ -21,8 +21,8 @@ import numpy as np
 import pyglet
 import yaml
 from geometry import SE2value
-from gym import spaces
-from gym.utils import seeding
+from gymnasium import spaces
+from gymnasium.utils import seeding
 from numpy.random.mtrand import RandomState
 from pyglet import gl, image, window
 
