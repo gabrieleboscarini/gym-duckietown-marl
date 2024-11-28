@@ -11,6 +11,7 @@ from learning.reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBu
 from learning.utils.env import launch_env
 from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, DtRewardWrapper, ActionWrapper, ResizeWrapper
 
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -24,7 +25,7 @@ def _train(args):
     # Launch the env with our helper function
     env = launch_env()
     print("Initialized environment")
-
+    
     # Wrappers
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env)
@@ -97,7 +98,7 @@ def _train(args):
                 )
 
         # Perform action
-        new_obs, reward, done, _ = env.step(action)
+        new_obs, reward, done,_, _ = env.step(action)
 
         if episode_timesteps >= args.env_timesteps:
             done = True
@@ -113,6 +114,11 @@ def _train(args):
         episode_timesteps += 1
         total_timesteps += 1
         timesteps_since_eval += 1
+        
+        '''
+        if (total_timesteps % 500) == 0:
+            policy.save("ddpg", args.model_dir)
+        '''
 
     print("Training done, about to save..")
     policy.save(filename="ddpg", directory=args.model_dir)
@@ -143,6 +149,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--replay_buffer_max_size", default=10000, type=int
     )  # Maximum number of steps to keep in the replay buffer
-    parser.add_argument("--model-dir", type=str, default="reinforcement/pytorch/models/")
+    parser.add_argument("--model-dir", type=str, default="learning/reinforcement/pytorch/models/")
 
     _train(parser.parse_args())

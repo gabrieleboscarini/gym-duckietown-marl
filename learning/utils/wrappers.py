@@ -2,7 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
-from gym_duckietown.simulator import Simulator
+from src.gym_duckietown.simulator import Simulator
 
 
 class MotionBlurWrapper(Simulator):
@@ -38,8 +38,8 @@ class MotionBlurWrapper(Simulator):
 
 class ResizeWrapper(gym.ObservationWrapper):
     def __init__(self, env=None, shape=(120, 160, 3)):
-        super().__init__(env)
-        self.observation_space.shape = shape
+        super(ResizeWrapper, self).__init__(env)
+        #self.observation_space.shape = shape
         self.observation_space = spaces.Box(
             self.observation_space.low[0, 0, 0],
             self.observation_space.high[0, 0, 0],
@@ -49,9 +49,13 @@ class ResizeWrapper(gym.ObservationWrapper):
         self.shape = shape
 
     def observation(self, observation):
-        from scipy.misc import imresize
+        #from scipy.misc import imresize
+        from PIL import Image
 
-        return imresize(observation, self.shape)
+        #return imresize(observation, self.shape)
+        
+        resized = Image.fromarray(observation).resize(self.shape[:2])
+        return np.array(resized)
 
 
 class NormalizeWrapper(gym.ObservationWrapper):

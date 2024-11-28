@@ -24,6 +24,7 @@ from geometry import SE2value
 from gymnasium import spaces
 from gymnasium.utils import seeding
 from numpy.random.mtrand import RandomState
+from numpy.random import Generator
 from pyglet import gl, image, window
 
 from duckietown_world import (
@@ -201,7 +202,8 @@ class Simulator(gym.Env):
     grid_height: int
     step_count: int
     timestamp: float
-    np_random: RandomState
+    #np_random: RandomState
+    np_random: Generator
     grid: List[TileDict]
 
     def __init__(
@@ -219,7 +221,7 @@ class Simulator(gym.Env):
         accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
         full_transparency: bool = False,
         user_tile_start=None,
-        seed: int = None,
+        #seed: int = None,
         distortion: bool = False,
         dynamics_rand: bool = False,
         camera_rand: bool = False,
@@ -263,8 +265,8 @@ class Simulator(gym.Env):
         )
 
         # first initialize the RNG
-        self.seed_value = seed
-        self.seed(seed=self.seed_value)
+        #self.seed_value = seed
+        #self.seed(seed=self.seed_value)
         self.num_tris_distractors = num_tris_distractors
         self.color_ground = color_ground
         self.color_sky = list(color_sky)
@@ -525,12 +527,13 @@ class Simulator(gym.Env):
         ]
         self.ground_vlist = pyglet.graphics.vertex_list(4, ("v3f", verts))
 
-    def reset(self, segment: bool = False):
+    def reset(self, segment: bool = False, seed: int = None, options=None):
         """
         Reset the simulation at the start of a new episode
         This also randomizes many environment parameters (domain randomization)
         """
-
+        super().reset(seed=seed)
+        
         # Step count since episode start
         self.step_count = 0
         self.timestamp = 0.0
@@ -758,9 +761,11 @@ class Simulator(gym.Env):
 
         # Generate the first camera image
         obs = self.render_obs(segment=segment)
+        
+        info = {}
 
         # Return first observation
-        return obs
+        return obs, info
 
     def _load_map(self, map_name: str):
         """
@@ -1039,11 +1044,13 @@ class Simulator(gym.Env):
 
     def close(self):
         pass
-
+    
+    '''
     def seed(self, seed=None):
         self.np_random, _ = seeding.np_random(seed)
         return [seed]
-
+    '''
+    
     def _set_tile(self, i: int, j: int, tile: TileDict) -> None:
         assert 0 <= i < self.grid_width
         assert 0 <= j < self.grid_height
@@ -1680,7 +1687,7 @@ class Simulator(gym.Env):
         d = self._compute_done_reward()
         misc["Simulator"]["msg"] = d.done_why
 
-        return obs, d.reward, d.done, misc
+        return obs, d.reward, d.done, False, misc
 
     def _compute_done_reward(self) -> DoneRewardInfo:
         # If the agent is not in a valid pose (on drivable tiles)

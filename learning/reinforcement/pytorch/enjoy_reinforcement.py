@@ -30,7 +30,7 @@ def _enjoy():
 
     # Initialize policy
     policy = DDPG(state_dim, action_dim, max_action, net_type="cnn")
-    policy.load(filename="ddpg", directory="reinforcement/pytorch/models/")
+    policy.load(filename="ddpg", directory="./models/")
 
     obs, _ = env.reset()
     done = False
@@ -39,7 +39,7 @@ def _enjoy():
         while not done:
             action = policy.predict(np.array(obs))
             # Perform action
-            obs, reward, done, _ = env.step(action)
+            obs, reward, done, _, _ = env.step(action)
             env.render()
         done = False
         obs, _ = env.reset()

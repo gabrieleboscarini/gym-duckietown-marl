@@ -110,7 +110,8 @@ class PyTorchObsWrapper(gym.ObservationWrapper):
 
 class ResizeWrapper(gym.ObservationWrapper):
     def __init__(self, env=None, resize_w=80, resize_h=80):
-        super().__init__(env)
+        gym.ObservationWrapper.__init__(self,env)
+        #super().__init__(env)
         self.resize_h = resize_h
         self.resize_w = resize_w
         obs_shape = self.observation_space.shape

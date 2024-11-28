@@ -22,7 +22,7 @@ else:
 path = os.path.dirname(os.path.dirname(__file__))
 logger.debug(f"gym-duckietown version {__version__} path {path}\n")
 
-from gym.envs.registration import register
+from gymnasium.envs.registration import register
 
 from .utils import get_subdir_path
 

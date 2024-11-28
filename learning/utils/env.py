@@ -1,15 +1,15 @@
 import gymnasium as gym
-import gym_duckietown
+import src.gym_duckietown
 
 
 def launch_env(id=None):
     env = None
     if id is None:
         # Launch the environment
-        from gym_duckietown.simulator import Simulator
+        from src.gym_duckietown.simulator import Simulator
 
         env = Simulator(
-            seed=123,  # random seed
+            #seed=123,  # random seed
             map_name="loop_empty",
             max_steps=500001,  # we don't want the gym to reset itself
             domain_rand=False,
