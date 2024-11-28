@@ -221,7 +221,7 @@ class Simulator(gym.Env):
         accept_start_angle_deg=DEFAULT_ACCEPT_START_ANGLE_DEG,
         full_transparency: bool = False,
         user_tile_start=None,
-        #seed: int = None,
+        seed: int = None,
         distortion: bool = False,
         dynamics_rand: bool = False,
         camera_rand: bool = False,
@@ -265,7 +265,7 @@ class Simulator(gym.Env):
         )
 
         # first initialize the RNG
-        #self.seed_value = seed
+        self.seed_value = seed
         #self.seed(seed=self.seed_value)
         self.num_tris_distractors = num_tris_distractors
         self.color_ground = color_ground
@@ -380,7 +380,7 @@ class Simulator(gym.Env):
             self.map_names = [mapfile.replace(".yaml", "") for mapfile in self.map_names]
 
         # Initialize the state
-        self.reset()
+        self.reset(seed=self.seed_value)
 
         self.last_action = np.array([0, 0])
         self.wheelVels = np.array([0, 0])

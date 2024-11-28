@@ -14,7 +14,7 @@ import numpy as np
 import pyglet
 from pyglet.window import key
 
-from gym_duckietown.envs import DuckietownEnv
+from src.gym_duckietown.envs import DuckietownEnv
 
 # from experiments.utils import save_img
 
@@ -46,7 +46,7 @@ if args.env_name and args.env_name.find("Duckietown") != -1:
 else:
     env = gym.make(args.env_name)
 
-env.reset()
+env.reset(seed=args.seed)
 env.render()
 
 
@@ -59,7 +59,7 @@ def on_key_press(symbol, modifiers):
 
     if symbol == key.BACKSPACE or symbol == key.SLASH:
         print("RESET")
-        env.reset()
+        env.reset(seed=args.seed)
         env.render()
     elif symbol == key.PAGEUP:
         env.unwrapped.cam_angle[0] = 0
@@ -117,7 +117,7 @@ def update(dt):
     if key_handler[key.LSHIFT]:
         action *= 1.5
 
-    obs, reward, done, info = env.step(action)
+    obs, reward, done, truncated, info = env.step(action)
     print("step_count = %s, reward=%.3f" % (env.unwrapped.step_count, reward))
 
     if key_handler[key.RETURN]:
@@ -128,7 +128,7 @@ def update(dt):
 
     if done:
         print("done!")
-        env.reset()
+        env.reset(seed=args.seed)
         env.render()
 
     env.render()

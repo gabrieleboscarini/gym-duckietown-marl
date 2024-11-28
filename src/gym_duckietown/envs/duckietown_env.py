@@ -60,7 +60,7 @@ class DuckietownEnv(Simulator):
 
         vels = np.array([u_l_limited, u_r_limited])
 
-        obs, reward, done, info = Simulator.step(self, vels)
+        obs, reward, done,truncated, info = Simulator.step(self, vels)
         mine = {}
         mine["k"] = self.k
         mine["gain"] = self.gain
@@ -69,7 +69,7 @@ class DuckietownEnv(Simulator):
         mine["omega_r"] = omega_r
         mine["omega_l"] = omega_l
         info["DuckietownEnv"] = mine
-        return obs, reward, done, info
+        return obs, reward, done, truncated,info
 
 
 class DuckietownLF(DuckietownEnv):
@@ -82,8 +82,8 @@ class DuckietownLF(DuckietownEnv):
         DuckietownEnv.__init__(self, **kwargs)
 
     def step(self, action):
-        obs, reward, done, info = DuckietownEnv.step(self, action)
-        return obs, reward, done, info
+        obs, reward, done, truncated, info = DuckietownEnv.step(self, action)
+        return obs, reward, done,truncated, info
 
 
 class DuckietownNav(DuckietownEnv):
@@ -111,7 +111,7 @@ class DuckietownNav(DuckietownEnv):
                 break
 
     def step(self, action):
-        obs, reward, done, info = DuckietownNav.step(self, action)
+        obs, reward, done, truncated, info = DuckietownNav.step(self, action)
 
         info["goal_tile"] = self.goal_tile
 
@@ -124,4 +124,4 @@ class DuckietownNav(DuckietownEnv):
             done = True
             reward = 1000
 
-        return obs, reward, done, info
+        return obs, reward, done, truncated, info

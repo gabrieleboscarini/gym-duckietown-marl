@@ -9,7 +9,7 @@ def launch_env(id=None):
         from src.gym_duckietown.simulator import Simulator
 
         env = Simulator(
-            #seed=123,  # random seed
+            seed=123,  # random seed
             map_name="loop_empty",
             max_steps=500001,  # we don't want the gym to reset itself
             domain_rand=False,
