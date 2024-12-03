@@ -20,11 +20,8 @@ def _enjoy():
     env = launch_env()
     
     print("Initialized environment")
-    env.reset()
-    env.render()
-
-
-    '''# Wrappers
+    
+    # Wrappers
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env)
     env = ImgWrapper(env)  # to make the images from 160x120x3 into 3x160x120
@@ -38,7 +35,7 @@ def _enjoy():
 
     # Initialize policy
     policy = DDPG(state_dim, action_dim, max_action, net_type="cnn")
-    policy.load(filename="ddpg", directory="./models/")
+    policy.load(filename="ddpg", directory="learning/reinforcement/pytorch/models/")
 
     obs, _ = env.reset()
     done = False
@@ -51,10 +48,8 @@ def _enjoy():
             env.render()
             
         done = False
-        obs, _ = env.reset()'''
+        obs, _ = env.reset()
 
 if __name__ == "__main__":
     _enjoy()
-    #tracer = trace.Trace(trace=True, count=False)
-    #tracer.run('render()')
     
