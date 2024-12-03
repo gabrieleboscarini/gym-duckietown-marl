@@ -1,11 +1,15 @@
 import ast
 import argparse
 import logging
-
 import os
+import sys
 import numpy as np
 
+from pyglet.window import Window
+
+
 # Duckietown Specific
+from src.gym_duckietown.envs import DuckietownEnv
 from learning.reinforcement.pytorch.ddpg import DDPG
 from learning.utils.env import launch_env
 from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, DtRewardWrapper, ActionWrapper, ResizeWrapper
@@ -14,9 +18,13 @@ from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, DtRewardWrappe
 def _enjoy():
     # Launch the env with our helper function
     env = launch_env()
+    
     print("Initialized environment")
+    env.reset()
+    env.render()
 
-    # Wrappers
+
+    '''# Wrappers
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env)
     env = ImgWrapper(env)  # to make the images from 160x120x3 into 3x160x120
@@ -30,7 +38,7 @@ def _enjoy():
 
     # Initialize policy
     policy = DDPG(state_dim, action_dim, max_action, net_type="cnn")
-    policy.load(filename="ddpg", directory="learning/reinforcement/pytorch/models/")
+    policy.load(filename="ddpg", directory="./models/")
 
     obs, _ = env.reset()
     done = False
@@ -41,9 +49,12 @@ def _enjoy():
             # Perform action
             obs, reward, done, _, _ = env.step(action)
             env.render()
+            
         done = False
-        obs, _ = env.reset()
-
+        obs, _ = env.reset()'''
 
 if __name__ == "__main__":
     _enjoy()
+    #tracer = trace.Trace(trace=True, count=False)
+    #tracer.run('render()')
+    

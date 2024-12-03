@@ -35,7 +35,7 @@ def _train(args):
     print("Initialized Wrappers")
 
     # Set seeds
-    seed(args.seed)
+    #seed(args.seed)
 
     state_dim = env.observation_space.shape
     action_dim = env.action_space.shape[0]
@@ -82,7 +82,7 @@ def _train(args):
 
             # Reset environment
             env_counter += 1
-            obs, _ = env.reset()
+            obs, _ = env.reset(seed=args.seed)
             done = False
             episode_reward = 0
             episode_num += 1

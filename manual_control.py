@@ -19,8 +19,8 @@ from src.gym_duckietown.envs import DuckietownEnv
 # from experiments.utils import save_img
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--env-name", default= "Duckietown-udem1-v0")
-parser.add_argument("--map-name", default="udem1")
+parser.add_argument("--env-name", default= "Duckietown")
+parser.add_argument("--map-name", default="small_loop")
 parser.add_argument("--distortion", default=False, action="store_true")
 parser.add_argument("--camera_rand", default=False, action="store_true")
 parser.add_argument("--draw-curve", action="store_true", help="draw the lane following curve")
@@ -30,6 +30,7 @@ parser.add_argument("--dynamics_rand", action="store_true", help="enable dynamic
 parser.add_argument("--frame-skip", default=1, type=int, help="number of frames to skip")
 parser.add_argument("--seed", default=1, type=int, help="seed")
 args = parser.parse_args()
+
 
 if args.env_name and args.env_name.find("Duckietown") != -1:
     env = DuckietownEnv(
@@ -45,6 +46,7 @@ if args.env_name and args.env_name.find("Duckietown") != -1:
     )
 else:
     env = gym.make(args.env_name)
+
 
 env.reset(seed=args.seed)
 env.render()
@@ -134,9 +136,9 @@ def update(dt):
     env.render()
 
 
-pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
+'''pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
 
 # Enter main event loop
-pyglet.app.run()
+pyglet.app.run()'''
 
 env.close()

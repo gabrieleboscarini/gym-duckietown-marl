@@ -1,6 +1,4 @@
 import gymnasium as gym
-import src.gym_duckietown
-
 
 def launch_env(id=None):
     env = None

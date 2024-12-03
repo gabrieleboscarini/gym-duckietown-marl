@@ -327,7 +327,7 @@ class Simulator(gym.Env):
         self.window = None
 
         # Invisible window to render into (shadow OpenGL context)
-        self.shadow_window = pyglet.window.Window(width=1, height=1, visible=False)
+        self.shadow_window = window.Window(width=1, height=1, visible=False)
 
         # For displaying text
         self.text_label = pyglet.text.Label(font_name="Arial", font_size=14, x=5, y=WINDOW_HEIGHT - 19)
