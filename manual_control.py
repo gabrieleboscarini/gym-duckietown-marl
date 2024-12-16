@@ -20,7 +20,7 @@ from src.gym_duckietown.envs import DuckietownEnv
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--env-name", default= "Duckietown")
-parser.add_argument("--map-name", default="small_loop")
+parser.add_argument("--map-name", default="4way")
 parser.add_argument("--distortion", default=False, action="store_true")
 parser.add_argument("--camera_rand", default=False, action="store_true")
 parser.add_argument("--draw-curve", action="store_true", help="draw the lane following curve")
@@ -36,7 +36,7 @@ if args.env_name and args.env_name.find("Duckietown") != -1:
     env = DuckietownEnv(
         seed=args.seed,
         map_name=args.map_name,
-        draw_curve=args.draw_curve,
+        draw_trajectory=[0,10],
         draw_bbox=args.draw_bbox,
         domain_rand=args.domain_rand,
         frame_skip=args.frame_skip,
@@ -62,7 +62,7 @@ def on_key_press(symbol, modifiers):
     if symbol == key.BACKSPACE or symbol == key.SLASH:
         print("RESET")
         env.reset(seed=args.seed)
-        env.render()
+        env.render("top_down")
     elif symbol == key.PAGEUP:
         env.unwrapped.cam_angle[0] = 0
     elif symbol == key.ESCAPE:
@@ -136,9 +136,9 @@ def update(dt):
     env.render()
 
 
-'''pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
+pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)
 
 # Enter main event loop
-pyglet.app.run()'''
+pyglet.app.run()
 
 env.close()

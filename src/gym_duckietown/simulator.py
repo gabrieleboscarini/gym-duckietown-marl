@@ -231,6 +231,7 @@ class Simulator(gym.Env):
         color_sky: Sequence[float] = BLUE_SKY,
         style: str = "photos",
         enable_leds: bool = False,
+        draw_trajectory: list[int] = None
     ):
         """
 
@@ -288,6 +289,9 @@ class Simulator(gym.Env):
 
         # Flag to draw the road curve
         self.draw_curve = draw_curve
+        
+        # List of trajectories to draw
+        self.draw_trajectory = draw_trajectory
 
         # Flag to draw bounding boxes
         self.draw_bbox = draw_bbox
@@ -767,7 +771,7 @@ class Simulator(gym.Env):
         # Return first observation
         return obs, info
 
-    def _load_map(self, map_name: str):
+    '''def _load_map(self, map_name: str):
         """
         Load the map layout from a YAML file
         """
@@ -788,7 +792,33 @@ class Simulator(gym.Env):
         with open(self.map_file_path, "r") as f:
             self.map_data = yaml.load(f, Loader=yaml.Loader)
 
-        self._interpret_map(self.map_data)
+        self._interpret_map(self.map_data)'''
+        
+    def _load_map(self, map_name: str):
+     """
+     Load the map layout from a YAML file located inside the repository.
+     """
+     # Store the map name
+     if os.path.exists(map_name) and os.path.isfile(map_name):
+        map_name = os.path.basename(map_name)
+        assert map_name.endswith(".yaml")
+        map_name = ".".join(map_name.split(".")[:-1])
+     self.map_name = map_name
+
+     # Define the repository's maps directory (assuming it's relative to this script)
+     map_directory = os.path.join(os.path.dirname(__file__), 'maps')  # or wherever your map directory is
+
+     # Get the full path to the map file inside the repository
+     self.map_file_path = os.path.join(map_directory, f"{map_name}.yaml")
+
+     # Log the map path for debugging
+     logger.debug(f'Loading map file "{self.map_file_path}"')
+
+     # Load the map data from the file
+     with open(self.map_file_path, "r") as f:
+        self.map_data = yaml.load(f, Loader=yaml.Loader)
+        
+     self._interpret_map(self.map_data)
 
     def _interpret_map(self, map_data: MapFormat1):
         try:
@@ -1907,6 +1937,13 @@ class Simulator(gym.Env):
                     # Don't draw current curve in blue
                     if idx == np.argmax(dot_prods):
                         continue
+                    bezier_draw(pt, n=20)
+                    
+            if self.draw_trajectory and tile["kind"]=="4way":
+                
+                pts = self._get_curve(i, j)
+                for idx in self.draw_trajectory:
+                    pt = pts[idx,:,:]
                     bezier_draw(pt, n=20)
 
         # For each object

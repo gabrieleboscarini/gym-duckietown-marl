@@ -335,10 +335,11 @@ def bezier_closest(cps, p, t_bot=0, t_top=1, n=8):
 
 def bezier_draw(cps, n=20, red=False):
     pts = [bezier_point(cps, i / (n - 1)) for i in range(0, n)]
+    gl.glLineWidth(5.0)  # Make the curve thicker
     gl.glBegin(gl.GL_LINE_STRIP)
-
+    
     if red:
-        gl.glColor3f(1, 0, 0)
+        gl.glColor3f(1, 0.1, 0.1)
     else:
         gl.glColor3f(0, 0, 1)
 
