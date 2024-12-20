@@ -31,44 +31,23 @@ def bezier_curve(points, n_steps=20):
     yvals = np.dot(yPoints, polynomial_array)
     return xvals, yvals
 
-def path_generate_4way(env, direction, n_steps=20):
+def path_generate_4way(env, trajectory, n_steps=20):
     ''' Generate path given driving direction using bezier curves
     based on (hard coded) optimal path points.
     @param[in]  direction       l=-1, r=1, s=0. '''
     
     i, j = helpers.get_4way_coord(env)
-    pts = env._get_curve(i,j)
-    xs, ys = None, None
+    #cps = env._get_curve(i,j)
+    
+    cps = env._get_curve(i,j)[trajectory, :, :]
+    
+    pts = [graphics.bezier_point(cps, i / (n_steps - 1)) for i in range(0, n_steps)]
+    
+    pts_2d = [[item[0], item[2]] for item in pts]
         
-    if direction == "RIGHT from SUD":
-        
-         graphics.bezier_draw(pts[1,:,:], n=20)
-        
-    elif direction == "RIGHT from NORD":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-        
-    elif direction == "RIGHT from WEST":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-    elif direction == "RIGHT from WEST":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-    elif direction == "LEFT from SUD":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-    elif direction == "LEFT from EAST":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-    elif direction == "RIGHT from SUD":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-    elif direction == "RIGHT from NORD":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-    elif direction == "RIGHT from EAST":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-    elif direction == "RIGHT from WEST":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-    elif direction == "LEFT from SUD":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-    elif direction == "LEFT from EAST":
-         graphics.bezier_draw(pts[1,:,:], n=20)
-    else:
-        raise ValueError("Invalid path direction !")
+    return np.asarray(pts_2d)
+    #else:
+        #raise ValueError("Invalid path direction !")
     
     '''assert len(xs) == len(ys)
     xs, ys = np.insert(xs, len(xs), np.linspace(-0.16,-1,20)), np.insert(ys, len(ys), -0.1225*np.ones((20,)))

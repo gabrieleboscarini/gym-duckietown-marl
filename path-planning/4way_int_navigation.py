@@ -10,25 +10,41 @@ def _navigate():
     env = helpers.launch_env()
     print("Environment initialized.")
     
-    env.reset()
+    path = path_generate_4way(env=env,trajectory=2, n_steps=20)
+    
+    controller = Controller(direction='l', path=path, wheel_distance=0.102)
+    
+    done = False
+    
+    while not done:
+        # Get the current pose of the Duckiebot
+        pose = env.cur_pos[0], env.cur_pos[2], env.cur_angle # Returns (x, y, theta)
 
-    for _ in range(1000):  # You can change the number of iterations as needed
+        # Compute wheel velocities using pure pursuit
+        v_left, v_right = controller.pure_pursuit(pose)
+
+        # Convert wheel velocities to gym-duckietown's action format
+        #action = [v_left + v_right, v_right - v_left]
+        action = [v_left, v_right]
+
+        # Step the environment
+        obs, reward, done, _, info = env.step(action)
+
+        # Render the environment
+        env.render("top_down")
+    
+    env.close()
+    
+    
+
+    '''for _ in range(1000):  # You can change the number of iterations as needed
     # Render the environment
         env.render(mode="top_down")
     
-    env.close()
+    env.close()'''
 
     
     
-    
-    
-    
-    
-    
-
-
-            
-            
     
     
     

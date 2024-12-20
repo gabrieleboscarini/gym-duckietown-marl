@@ -13,7 +13,7 @@ from scipy.spatial.distance import cdist
 
 class Controller(object):
     def __init__(self,direction,path,wheel_distance,
-                     adm_error=0.005, la_dis=0.03, min_r=0.2, vel=0.025, n_hist=4):
+                     adm_error=0.005, la_dis=0.25, min_r=0.2, vel=0.1, n_hist=4):
         '''@param[in]  path            [[x,y],...] target path, numpy array.
         @param[in]  wheel_distance  differential drive vehicle baseline [m].
         @param[in]  adm_error       admissible error (perpendicular distance

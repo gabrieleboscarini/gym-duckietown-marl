@@ -686,11 +686,12 @@ class Simulator(gym.Env):
         if self.start_pose is not None:
             logger.info(f"using map pose start: {self.start_pose}")
 
-            i, j = tile["coords"]
+            '''i, j = tile["coords"]
             x = i * self.road_tile_size + self.start_pose[0][0]
             z = j * self.road_tile_size + self.start_pose[0][2]
-            propose_pos = np.array([x, 0, z])
-            propose_angle = self.start_pose[1]
+            propose_pos = np.array([x, 0, z])'''
+            propose_pos = self.start_pose[0]
+            propose_angle = self.start_pose[1]*np.pi/180
 
             logger.info(f"Using map pose start. \n Pose: {propose_pos}, Angle: {propose_angle}")
 

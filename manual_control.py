@@ -20,7 +20,7 @@ from src.gym_duckietown.envs import DuckietownEnv
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--env-name", default= "Duckietown")
-parser.add_argument("--map-name", default="4way")
+parser.add_argument("--map-name", default="4way_multi")
 parser.add_argument("--distortion", default=False, action="store_true")
 parser.add_argument("--camera_rand", default=False, action="store_true")
 parser.add_argument("--draw-curve", action="store_true", help="draw the lane following curve")
@@ -49,7 +49,7 @@ else:
 
 
 env.reset(seed=args.seed)
-env.render()
+env.render("top_down")
 
 
 @env.unwrapped.window.event
@@ -131,9 +131,9 @@ def update(dt):
     if done:
         print("done!")
         env.reset(seed=args.seed)
-        env.render()
+        env.render("top_down")
 
-    env.render()
+    env.render("top_down")
 
 
 pyglet.clock.schedule_interval(update, 1.0 / env.unwrapped.frame_rate)

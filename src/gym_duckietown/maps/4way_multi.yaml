@@ -21,6 +21,7 @@ objects:
     height: 0.4
     optional: true
 
-"start_pose": [[0.480, 0, 0.2925], 0]
+
+"start_pose": [[1.36, 0, 1.02], -90]
 
 tile_size: 0.585

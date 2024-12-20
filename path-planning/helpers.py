@@ -17,7 +17,7 @@ def launch_env(id=None):
             accept_start_angle_deg=4,  # start close to straight
             full_transparency=True,
             distortion=False,
-            draw_trajectory=[0,10]
+            draw_trajectory=[2]
         )
     else:
         env = gym.make(id)
