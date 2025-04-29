@@ -26,6 +26,7 @@ from gymnasium.utils import seeding
 from numpy.random.mtrand import RandomState
 from numpy.random import Generator
 from pyglet import gl, image, window
+from src.gym_duckietown import graphics
 
 from duckietown_world import (
     get_DB18_nominal,
@@ -231,7 +232,7 @@ class Simulator(gym.Env):
         color_sky: Sequence[float] = BLUE_SKY,
         style: str = "photos",
         enable_leds: bool = False,
-        draw_trajectory: list[int] = None
+        draw_trajectory: list[str] = None
     ):
         """
 
@@ -384,7 +385,7 @@ class Simulator(gym.Env):
             self.map_names = [mapfile.replace(".yaml", "") for mapfile in self.map_names]
 
         # Initialize the state
-        self.reset(seed=self.seed_value)
+        #self.reset(seed=self.seed_value)
 
         self.last_action = np.array([0, 0])
         self.wheelVels = np.array([0, 0])
@@ -664,13 +665,13 @@ class Simulator(gym.Env):
 
         # If the map specifies a starting tile
         if self.user_tile_start:
-            logger.info(f"using user tile start: {self.user_tile_start}")
+            #logger.info(f"using user tile start: {self.user_tile_start}")
             i, j = self.user_tile_start
             tile = self._get_tile(i, j)
             if tile is None:
                 msg = "The tile specified does not exist."
                 raise Exception(msg)
-            logger.debug(f"tile: {tile}")
+            #logger.debug(f"tile: {tile}")
         else:
             if self.start_tile is not None:
                 tile = self.start_tile
@@ -1455,12 +1456,12 @@ class Simulator(gym.Env):
         tile = self._get_tile(*coords)
         if tile is None:
             msg = f"No tile found at {pos} {coords}"
-            logger.debug(msg)
+            #logger.debug(msg)
             return False
 
         if not tile["drivable"]:
             msg = f"{pos} corresponds to tile at {coords} which is not drivable: {tile}"
-            logger.debug(msg)
+            #logger.debug(msg)
             return False
 
         return True
@@ -1688,6 +1689,41 @@ class Simulator(gym.Env):
         # gz = (grid_height - 1) * tile_size - cp[1]
         gz = GH * tile_size - cp[1]
         return [gx, gy, gz], angle
+    
+    def compute_trajectory(self, trajectory, n_steps):
+        
+        ###Author: Gabriele Boscarini
+        
+        for i, j in itertools.product(range(self.grid_width), range(self.grid_height)):
+            
+            tile = self._get_tile(i, j)
+            if tile["kind"]=="4way":
+                
+                if trajectory == "N2L":
+                    
+                    cps = self._get_curve(i,j)[0, :, :]
+                    points_before = self._get_curve(i,j-1)[1,:,:]
+                    points_after = self._get_curve(i+1,j)[0, :, :]
+                    pts_before = [graphics.bezier_point(points_before, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_middle = [graphics.bezier_point(cps, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_middle.pop(0)
+                    pts_after = [graphics.bezier_point(points_after, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_after.pop(0)
+                    pts = pts_before+pts_middle+pts_after
+                
+                    
+                if trajectory == "N2R":
+                    
+                    cps = self._get_curve(i,j)[1, :, :]
+                    points_before = self._get_curve(i-1,j)[0,:,:]
+                    points_after = self._get_curve(i+1,j)[0, :, :]
+                    cps_stacked = np.vstack((cps, points_after))
+                    cps_stacked = np.vstack((points_before, cps_stacked))
+                    pts = [graphics.bezier_point(cps_stacked, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    
+        pts_2d = [[item[0], item[2]] for item in pts]
+        return cps, np.asarray(pts_2d)
+                    
 
     def compute_reward(self, pos, angle, speed):
         # Compute the collision avoidance penalty
@@ -1939,17 +1975,24 @@ class Simulator(gym.Env):
                     if idx == np.argmax(dot_prods):
                         continue
                     bezier_draw(pt, n=20)
+           
+              
                     
             if self.draw_trajectory and tile["kind"]=="4way":
                 
-                pts = self._get_curve(i, j)
-                for idx in self.draw_trajectory:
-                    pt = pts[idx,:,:]
-                    bezier_draw(pt, n=20)
-
+                #pts = self._get_curve(i, j)
+                #for idx in self.draw_trajectory:
+                    #pt = pts[idx,:,:]
+                    #bezier_draw(pt, n=20)
+                    
+                    pts = self.compute_trajectory("N2L", 20)
+        
+            
         # For each object
         for obj in self.objects:
             obj.render(draw_bbox=self.draw_bbox, segment=segment, enable_leds=self.enable_leds)
+            
+        
 
         # Draw the agent's own bounding box
         if self.draw_bbox:
@@ -1987,11 +2030,12 @@ class Simulator(gym.Env):
 
         # Unbind the frame buffer
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
+        
 
         # Flip the image because OpenGL maps (0,0) to the lower-left corner
         # Note: this is necessary for gym.wrappers.Monitor to record videos
         # properly, otherwise they are vertically inverted.
-        img_array = np.ascontiguousarray(np.flip(img_array, axis=0))
+        img_array = np.ascontiguousarray(np.flip(img_array, axis=0)) 
 
         return img_array
 

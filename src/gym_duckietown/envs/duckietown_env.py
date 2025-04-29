@@ -1,11 +1,164 @@
 # coding=utf-8
 import numpy as np
 from gymnasium import spaces
+import gymnasium as gym
 
 from ..simulator import Simulator
 from .. import logger
+from path_planning.controller import Controller 
+from scipy.spatial.distance import cdist
 
 
+class PurePursuitEnv(Simulator):
+    
+    def __init__(self,**kwargs):
+        Simulator.__init__(self, **kwargs)
+        
+        logger.info("using PurePursuitEnv")
+        
+        self.action_space = spaces.Box(low=np.array([0.1, 0.1]),
+                                       high=np.array([1.5, 2.0]),
+                                       dtype=np.float32)
+        
+        self.observation_space = spaces.Box(low=np.array([0, 0,-3.141,0,0,0,0]),
+                                       high=np.array([3, 3,3.141,0.1,3,3,2]),
+                                       dtype=np.float32)
+        
+        self.path = self.compute_trajectory("N2L", 20)[1]
+        
+        self.controller = Controller(direction='l', path=self.path, wheel_distance=0.102)
+        
+        self.obs = None  # Initialize state
+        
+        self.distance_covered = 0
+        
+        self.reset(seed=self.seed_value)
+        
+    
+    def reward_function(self, actual_position, prev_position):
+        
+        '''actual = np.zeros((1,2))
+        actual[0,0]=self.cur_pos[0]
+        actual[0,1]=self.cur_pos[2]'''
+        
+        v_ref = 0.4
+        
+        dist_all = cdist(self.path,actual_position,'euclidean').flatten()
+        self.cte = np.min(dist_all)
+
+        step_distance = np.linalg.norm(actual_position - prev_position)
+        self.distance_covered += step_distance
+        
+        reward = -( +1.0 * self.cte**2 + 1.0*(v_ref - self.speed)**2) + 1.0*step_distance
+        
+        '''print(self.cte**2)
+        print((v_ref - self.speed)**2)
+        print(step_distance)'''
+        
+        return reward
+        
+        
+    def _compute_done_reward(self, actual_position, prev_position):
+        
+        # If the agent is not in a valid pose (on drivable tiles)
+        if not self._valid_pose(self.cur_pos, self.cur_angle):
+            msg = "Stopping the simulator because we are at an invalid pose."
+            # logger.info(msg)
+            reward = -10
+            done_code = "invalid-pose"
+            done = True
+        # If the maximum time step count is reached
+        elif self.step_count >= self.max_steps:
+            msg = "Stopping the simulator because we reached max_steps = %s" % self.max_steps
+            # logger.info(msg)
+            done = True
+            reward = 0
+            done_code = "max-steps-reached"
+        else:
+            done = False
+            reward = self.reward_function(actual_position, prev_position)
+            msg = ""
+            done_code = "in-progress"
+            
+        return reward, done, msg, done_code
+        
+        
+        
+    def reset(self, seed=None):
+        
+        _, info = super().reset(seed=seed)
+        
+        self.distance = 0
+        
+        self.goal = np.array([[self.cur_pos[0], self.cur_pos[2]]])
+        
+        self.controller.reset()
+        
+        self.obs = np.array([self.cur_pos[0],
+                        self.cur_pos[2],
+                        self.cur_angle,
+                        self.speed,
+                        self.goal[0,0],  #prior lookahead x
+                        self.goal[0,1],  #prior lookahead y
+                        self.controller.vel
+                        ])
+        
+        return self.obs, info
+        
+    def step(self,action):
+        
+        # Unpack the action into look-ahead distance and velocity
+        la_dis, vel = action
+        
+        # Update the controller parameters
+        #self.controller.la_dis = la_dis
+        #self.controller.vel = vel
+        self.controller.update_parameters(la_dis, vel)
+        
+        # Get the current pose of the Duckiebot
+        pose = self.cur_pos[0], self.cur_pos[2], self.cur_angle # Returns (x, y, theta)
+        
+        prev_position = np.zeros((1,2))
+        prev_position[0,0]=self.cur_pos[0]
+        prev_position[0,1]=self.cur_pos[2]
+        
+        
+        # Compute wheel velocities using pure pursuit
+        v_left, v_right, current_goal = self.controller.pure_pursuit(pose)
+
+        # Convert wheel velocities to gym-duckietown's action format
+        vels = np.array([v_left, v_right])
+        vels = np.clip(vels, -1, 1)
+        
+        for _ in range(self.frame_skip):
+            self.update_physics(vels)
+            
+        actual_position = np.zeros((1,2))
+        actual_position[0,0]=self.cur_pos[0]
+        actual_position[0,1]=self.cur_pos[2]
+            
+        self.obs = np.array([self.cur_pos[0],
+                        self.cur_pos[2],
+                        self.cur_angle,
+                        self.speed,
+                        self.goal[0,0], #prior lookahead x
+                        self.goal[0,1], #prior lookahead y
+                        self.controller.vel
+                        ])
+        
+        misc = self.get_agent_info()
+        
+        #update goal
+        self.goal = current_goal
+
+        #d = self._compute_done_reward()
+        
+        reward, done, msg, done_code = self._compute_done_reward(prev_position,actual_position)
+        misc["Simulator"]["msg"] = msg
+        
+        return self.obs, reward, done, _, misc
+    
+        
 class DuckietownEnv(Simulator):
     """
     Wrapper to control the simulator using velocity and steering angle

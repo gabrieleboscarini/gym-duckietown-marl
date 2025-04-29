@@ -8,7 +8,7 @@ def launch_env(id=None):
 
         env = Simulator(
             seed=123,  # random seed
-            map_name="loop_empty",
+            map_name="4way_multi",
             max_steps=500001,  # we don't want the gym to reset itself
             domain_rand=False,
             camera_width=640,

@@ -1,3 +1,11 @@
+###############################################################################
+# Duckietown - UNIPD
+# Author: Gabriele Boscarini
+# 4-way intersection navigation demo.
+###############################################################################
+
+
+
 import helpers
 from pyglet.window import Window
 from controller import Controller
@@ -10,7 +18,11 @@ def _navigate():
     env = helpers.launch_env()
     print("Environment initialized.")
     
-    path = path_generate_4way(env=env,trajectory=2, n_steps=20)
+    path = env.compute_trajectory("N2L", 20)[1]
+    
+    #path = path_generate_4way(env=env,trajectory="N2L", n_steps=20)
+    
+    print(path.shape)
     
     controller = Controller(direction='l', path=path, wheel_distance=0.102)
     
@@ -21,10 +33,9 @@ def _navigate():
         pose = env.cur_pos[0], env.cur_pos[2], env.cur_angle # Returns (x, y, theta)
 
         # Compute wheel velocities using pure pursuit
-        v_left, v_right = controller.pure_pursuit(pose)
+        v_left, v_right, _ = controller.pure_pursuit(pose)
 
         # Convert wheel velocities to gym-duckietown's action format
-        #action = [v_left + v_right, v_right - v_left]
         action = [v_left, v_right]
 
         # Step the environment
@@ -43,12 +54,7 @@ def _navigate():
     
     env.close()'''
 
-    
-    
-    
-    
-    
-    
+
 
 if __name__ == "__main__":
     _navigate()

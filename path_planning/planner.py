@@ -41,11 +41,19 @@ def path_generate_4way(env, trajectory, n_steps=20):
     
     cps = env._get_curve(i,j)[trajectory, :, :]
     
-    pts = [graphics.bezier_point(cps, i / (n_steps - 1)) for i in range(0, n_steps)]
+    #pts = [graphics.bezier_point(cps, i / (n_steps - 1)) for i in range(0, n_steps)]
     
+    if trajectory == "N2L": 
+        
+        points_before = env._get_curve(i-1,j)[0,:,:]
+        points_after = env._get_curve(i+1,j)[0, :, :]
+        cps_stacked = np.vstack((cps, points_after))
+        cps_stacked = np.vstack((points_before, cps_stacked))
+        pts = [graphics.bezier_point(cps_stacked, i / (n_steps - 1)) for i in range(0, n_steps)]
+                
     pts_2d = [[item[0], item[2]] for item in pts]
         
-    return np.asarray(pts_2d)
+    return cps_stacked, np.asarray(pts_2d)
     #else:
         #raise ValueError("Invalid path direction !")
     

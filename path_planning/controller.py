@@ -13,7 +13,7 @@ from scipy.spatial.distance import cdist
 
 class Controller(object):
     def __init__(self,direction,path,wheel_distance,
-                     adm_error=0.005, la_dis=0.25, min_r=0.2, vel=0.1, n_hist=4):
+                     adm_error=0.005, la_dis=0.25, min_r=0.2, vel=0.2, n_hist=4):
         '''@param[in]  path            [[x,y],...] target path, numpy array.
         @param[in]  wheel_distance  differential drive vehicle baseline [m].
         @param[in]  adm_error       admissible error (perpendicular distance
@@ -37,6 +37,20 @@ class Controller(object):
         self.theta_hist = np.zeros(n_hist,)
         self.right_angle = -np.pi/2 
         self.n_hist = n_hist
+        
+    def update_parameters(self, new_la_dis, new_vel):
+        '''
+        Updates the look-ahead distance and velocity dynamically.
+
+        @param[in]  new_la_dis  New look-ahead distance [m].
+        @param[in]  new_vel     New velocity [m/s].
+        '''
+        self.la_dis = new_la_dis
+        self.vel = new_vel
+        
+    def reset(self):
+        self.theta_hist = np.zeros(self.n_hist,)
+        self.goal = None
 
     def pure_pursuit(self,pose):
         ''' Pure pursuit implementation determining control commands (v, tau)
@@ -68,11 +82,13 @@ class Controller(object):
         while(distance < self.la_dis and idx_shortest<len(self.path)-1):
             distance += np.linalg.norm(self.path[idx_shortest+1,:]-self.path[idx_shortest,:])
             idx_shortest += 1
+            
         idx_next = idx_shortest
-        goal = self.path[idx_next,:]
+        self.goal = self.path[idx_next,:]
+
         # From goal point --> vehicle action (velocity & steering vector).
-        sv = (goal[0,0]-actual[0,0],
-              goal[0,1]-actual[0,1]) #Steering_vector
+        sv = (self.goal[0,0]-actual[0,0],
+              self.goal[0,1]-actual[0,1]) #Steering_vector
         # New orientation for the car.
         ori = np.arctan2(sv[1],sv[0])
         # Compute omega (pure pursuit geometry).
@@ -89,4 +105,4 @@ class Controller(object):
             r=-self.min_r
             self.vel = 0.275
         tau = self.vel/r
-        return (self.vel-0.5*tau*self.wheel_distance),(self.vel+0.5*tau*self.wheel_distance)
+        return (self.vel-0.5*tau*self.wheel_distance),(self.vel+0.5*tau*self.wheel_distance), self.goal
