@@ -11,7 +11,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim, max_action):
+    def __init__(self, state_dim, action_dim, max_action, low_action):
         super(Actor, self).__init__()
 
         self.l1 = nn.Linear(state_dim, 256)
@@ -19,12 +19,20 @@ class Actor(nn.Module):
         self.l3 = nn.Linear(256, action_dim)
         
         self.max_action = max_action
-  
+        self.low_action = low_action
+        
+        '''# Convert to PyTorch tensors
+        self.max_action = torch.from_numpy(max_action).float()
+        self.low_action = torch.from_numpy(low_action).float()'''
         
     def forward(self, state):
         a = F.relu(self.l1(state))
         a = F.relu(self.l2(a))
-        return self.max_action * torch.tanh(self.l3(a))
+        #return self.max_action * torch.tanh(self.l3(a))
+        a = torch.tanh(self.l3(a))
+        
+        #scaled_output = self.low_action + (a + 1.0) * 0.5 * (self.max_action - self.low_action)
+        return a 
 
 
 class Critic(nn.Module):
@@ -70,14 +78,19 @@ class TD3(object):
         state_dim,
         action_dim,
         max_action,
+        low_action,
         discount=0.99,
         tau=0.005,
         policy_noise=0.2,
         noise_clip=0.5,
         policy_freq=2
     ):
-
-        self.actor = Actor(state_dim, action_dim, max_action).to(device)
+        
+        # Convert to PyTorch tensors
+        self.max_action = torch.from_numpy(max_action).float().to(device)
+        self.low_action = torch.from_numpy(low_action).float().to(device)
+        
+        self.actor = Actor(state_dim, action_dim, self.max_action, self.low_action).to(device)
         self.actor_target = copy.deepcopy(self.actor)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=3e-4)
 
@@ -85,7 +98,8 @@ class TD3(object):
         self.critic_target = copy.deepcopy(self.critic)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
 
-        self.max_action = max_action
+        #self.max_action = max_action
+        #self.low_action = low_action
         self.discount = discount
         self.tau = tau
         self.policy_noise = policy_noise
@@ -118,8 +132,10 @@ class TD3(object):
             ).clamp(-self.noise_clip, self.noise_clip)
             
             next_action = (
-                self.actor_target(next_state) + noise
-            ).clamp(-self.max_action, self.max_action)
+				self.actor_target(next_state) + noise
+			).clamp(-1, 1)
+            
+            #next_action = torch.max(torch.min(next_action, self.max_action), self.low_action)
 
             # Compute the target Q value
             target_Q1, target_Q2 = self.critic_target(next_state, next_action)

@@ -685,7 +685,7 @@ class Simulator(gym.Env):
 
         # If the map specifies a starting pose
         if self.start_pose is not None:
-            logger.info(f"using map pose start: {self.start_pose}")
+            #logger.info(f"using map pose start: {self.start_pose}")
 
             '''i, j = tile["coords"]
             x = i * self.road_tile_size + self.start_pose[0][0]
@@ -694,7 +694,7 @@ class Simulator(gym.Env):
             propose_pos = self.start_pose[0]
             propose_angle = self.start_pose[1]*np.pi/180
 
-            logger.info(f"Using map pose start. \n Pose: {propose_pos}, Angle: {propose_angle}")
+            #logger.info(f"Using map pose start. \n Pose: {propose_pos}, Angle: {propose_angle}")
 
         else:
             # Keep trying to find a valid spawn position on this tile
@@ -763,7 +763,7 @@ class Simulator(gym.Env):
         c0 = q, v0
         self.state = p.initialize(c0=c0, t0=0)
 
-        logger.info(f"Starting at {self.cur_pos} {self.cur_angle}")
+        #logger.info(f"Starting at {self.cur_pos} {self.cur_angle}")
 
         # Generate the first camera image
         obs = self.render_obs(segment=segment)
@@ -1564,11 +1564,11 @@ class Simulator(gym.Env):
 
         if not res:
             logger.debug(f"Invalid pose. Collision free: {no_collision} On drivable area: {all_drivable}")
-            logger.debug(f"safety_factor: {safety_factor}")
-            logger.debug(f"pos: {pos}")
-            logger.debug(f"l_pos: {l_pos}")
-            logger.debug(f"r_pos: {r_pos}")
-            logger.debug(f"f_pos: {f_pos}")
+            #logger.debug(f"safety_factor: {safety_factor}")
+            #logger.debug(f"pos: {pos}")
+            #logger.debug(f"l_pos: {l_pos}")
+            #logger.debug(f"r_pos: {r_pos}")
+            #logger.debug(f"f_pos: {f_pos}")
 
         return res
 
@@ -1692,8 +1692,6 @@ class Simulator(gym.Env):
     
     def compute_trajectory(self, trajectory, n_steps):
         
-        ###Author: Gabriele Boscarini
-        
         for i, j in itertools.product(range(self.grid_width), range(self.grid_height)):
             
             tile = self._get_tile(i, j)
@@ -1701,6 +1699,7 @@ class Simulator(gym.Env):
                 
                 if trajectory == "N2L":
                     
+                    direction = "N2L"
                     cps = self._get_curve(i,j)[0, :, :]
                     points_before = self._get_curve(i,j-1)[1,:,:]
                     points_after = self._get_curve(i+1,j)[0, :, :]
@@ -1714,6 +1713,7 @@ class Simulator(gym.Env):
                     
                 if trajectory == "N2R":
                     
+                    direction = "N2R"
                     cps = self._get_curve(i,j)[1, :, :]
                     points_before = self._get_curve(i-1,j)[0,:,:]
                     points_after = self._get_curve(i+1,j)[0, :, :]
@@ -1722,7 +1722,7 @@ class Simulator(gym.Env):
                     pts = [graphics.bezier_point(cps_stacked, i / (n_steps - 1)) for i in range(0, n_steps)]
                     
         pts_2d = [[item[0], item[2]] for item in pts]
-        return cps, np.asarray(pts_2d)
+        return cps, np.asarray(pts_2d), direction
                     
 
     def compute_reward(self, pos, angle, speed):

@@ -17,31 +17,43 @@ class PurePursuitEnv(Simulator):
         logger.info("using PurePursuitEnv")
         
         self.action_space = spaces.Box(low=np.array([0.1, 0.1]),
-                                       high=np.array([1.5, 2.0]),
+                                       high=np.array([1.5, 1.0]),
                                        dtype=np.float32)
         
         self.observation_space = spaces.Box(low=np.array([0, 0,-3.141,0,0,0,0]),
-                                       high=np.array([3, 3,3.141,0.1,3,3,2]),
+                                       high=np.array([3, 3,3.141,1.20,3,3,2]),
                                        dtype=np.float32)
         
-        self.path = self.compute_trajectory("N2L", 20)[1]
+        _,self.path,self.direction = self.compute_trajectory("N2L", 20)
         
         self.controller = Controller(direction='l', path=self.path, wheel_distance=0.102)
         
         self.obs = None  # Initialize state
         
+        self.cte = 0 #cross track error
+        
         self.distance_covered = 0
         
         self.reset(seed=self.seed_value)
         
+        
+    def _done_pose(self, pos):
+        done = False
+        coords = self.get_grid_coords(pos)
+        tile = self._get_tile(*coords)
+        
+        if self.direction == "N2L":
+            
+            if tile["coords"] == (4,2):
+                
+                done = True
+                
+        return done
     
+            
     def reward_function(self, actual_position, prev_position):
         
-        '''actual = np.zeros((1,2))
-        actual[0,0]=self.cur_pos[0]
-        actual[0,1]=self.cur_pos[2]'''
-        
-        v_ref = 0.4
+        v_ref = 0.3
         
         dist_all = cdist(self.path,actual_position,'euclidean').flatten()
         self.cte = np.min(dist_all)
@@ -49,11 +61,7 @@ class PurePursuitEnv(Simulator):
         step_distance = np.linalg.norm(actual_position - prev_position)
         self.distance_covered += step_distance
         
-        reward = -( +1.0 * self.cte**2 + 1.0*(v_ref - self.speed)**2) + 1.0*step_distance
-        
-        '''print(self.cte**2)
-        print((v_ref - self.speed)**2)
-        print(step_distance)'''
+        reward = -( +1.0 * self.cte**2 + 1.0*(v_ref - self.speed)**2) #+ 0.2*self.distance_covered
         
         return reward
         
@@ -64,9 +72,23 @@ class PurePursuitEnv(Simulator):
         if not self._valid_pose(self.cur_pos, self.cur_angle):
             msg = "Stopping the simulator because we are at an invalid pose."
             # logger.info(msg)
-            reward = -10
+            reward = -1
             done_code = "invalid-pose"
             done = True
+            
+        elif self.cte > 0.3:
+            msg = "Stopping the simulator because cte exceeded the treshold"
+            reward = -1
+            done_code = "invalid-pose"
+            done = True
+            
+        #if the agent reach the target tile    
+        elif self._done_pose(self.cur_pos):
+            msg = "Stopping the simulator because we arrived at target"
+            reward = 0
+            done_code = "done-pose"
+            done = True
+            
         # If the maximum time step count is reached
         elif self.step_count >= self.max_steps:
             msg = "Stopping the simulator because we reached max_steps = %s" % self.max_steps
@@ -88,7 +110,9 @@ class PurePursuitEnv(Simulator):
         
         _, info = super().reset(seed=seed)
         
-        self.distance = 0
+        self.distance_covered = 0
+        
+        self.cte = 0
         
         self.goal = np.array([[self.cur_pos[0], self.cur_pos[2]]])
         
@@ -153,7 +177,7 @@ class PurePursuitEnv(Simulator):
 
         #d = self._compute_done_reward()
         
-        reward, done, msg, done_code = self._compute_done_reward(prev_position,actual_position)
+        reward, done, msg, done_code = self._compute_done_reward(actual_position,prev_position)
         misc["Simulator"]["msg"] = msg
         
         return self.obs, reward, done, _, misc

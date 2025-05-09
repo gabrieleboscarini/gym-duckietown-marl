@@ -74,7 +74,7 @@ def _train(args):
                 if timesteps_since_eval >= args.eval_freq:
                     timesteps_since_eval %= args.eval_freq
                     evaluations.append(evaluate_policy(env, policy))
-                    print("rewards at time {}: {}".format(total_timesteps, evaluations[-1]))
+                    #print("rewards at time {}: {}".format(total_timesteps, evaluations[-1]))
 
                     if args.save_models:
                         policy.save(filename="ddpg", directory=args.model_dir)

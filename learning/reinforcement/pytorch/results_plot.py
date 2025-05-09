@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data = np.load("./results/rewards.npz")
+data = np.load("learning/reinforcement/pytorch/runs/results/rewards.npz")
 rewards = data["arr_0"]
 
 plt.plot(rewards)

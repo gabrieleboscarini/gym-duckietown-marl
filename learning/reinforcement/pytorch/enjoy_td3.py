@@ -30,11 +30,12 @@ def _enjoy():
     
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
-    max_action = float(env.action_space.high[0])
+    max_action = env.action_space.high
+    low_action = env.action_space.low
 
     # Initialize policy
-    policy = TD3(state_dim, action_dim, max_action)
-    policy.load(filename="td3")
+    policy = TD3(state_dim, action_dim, max_action, low_action)
+    policy.load(filename="learning/reinforcement/pytorch/runs/models/seed0/td3")
 
     obs, _ = env.reset()
     done = False
@@ -43,8 +44,9 @@ def _enjoy():
         while not done:
             action = policy.select_action(np.array(obs))
             #action = env.action_space.sample()
+            env_action = low_action + (action + 1.0) * 0.5 * (max_action - low_action)
             # Perform action
-            obs, reward, done, _, _ = env.step(action)
+            obs, reward, done, _, _ = env.step(env_action)
             env.render("top_down")
             
         done = False
