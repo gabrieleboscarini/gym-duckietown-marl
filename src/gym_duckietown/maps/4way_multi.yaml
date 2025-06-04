@@ -21,6 +21,13 @@ objects:
     height: 0.4
     optional: true
 
+  duckiebot1:
+    kind: duckiebot
+    pos: [2.7, 3]
+    rotate: -90
+    height: 0.12
+    static: False
+
 
 "start_pose": [[1.34, 0, 0.53], -90]
 

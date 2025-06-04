@@ -67,6 +67,7 @@ from .objects import CheckerboardObj, DuckiebotObj, DuckieObj, TrafficLightObj, 
 from .objmesh import get_mesh, MatInfo, ObjMesh
 from .randomization import Randomizer
 from .utils import get_subdir_path
+from path_planning.controller import Controller
 
 DIM = 0.5
 
@@ -389,7 +390,8 @@ class Simulator(gym.Env):
 
         self.last_action = np.array([0, 0])
         self.wheelVels = np.array([0, 0])
-
+        self.direction = np.random.randint(6,9)
+        
     def _init_vlists(self):
 
         ns = 8
@@ -545,6 +547,8 @@ class Simulator(gym.Env):
 
         # Robot's current speed
         self.speed = 0.0
+        
+        self.direction = np.random.randint(6,9)
 
         if self.randomize_maps_on_reset:
             map_name = self.np_random.choice(self.map_names)
@@ -769,7 +773,13 @@ class Simulator(gym.Env):
         obs = self.render_obs(segment=segment)
         
         info = {}
-
+        
+        # Update world objects
+        for obj in self.objects:
+            if obj.kind == MapFormat1Constants.KIND_DUCKIEBOT:
+                if not obj.static:
+                    obj.reset()
+        
         # Return first observation
         return obs, info
 
@@ -1373,7 +1383,7 @@ class Simulator(gym.Env):
 
         return pts
 
-    def closest_curve_point(
+    '''def closest_curve_point(
         self, pos: np.array, angle: float
     ) -> Tuple[Optional[np.array], Optional[np.array]]:
         """
@@ -1405,8 +1415,60 @@ class Simulator(gym.Env):
         point = bezier_point(cps, t)
         tangent = bezier_tangent(cps, t)
 
-        return point, tangent
+        return point, tangent'''
+    
+    def closest_curve_point(
+        self, pos: np.array, angle: float
+    ) -> Tuple[Optional[np.array], Optional[np.array]]:
+        """
+        Get the closest point on the curve to a given point
+        Also returns the tangent at that point.
 
+        Returns None, None if not in a lane.
+        """
+
+        i, j = self.get_grid_coords(pos)
+        tile = self._get_tile(i, j)
+
+        if tile is None or not tile["drivable"]:
+            return None, None
+        
+        if tile["kind"] == "4way":
+            
+            #direction = np.random.randint(6,9)
+            cps = self._get_curve(i,j)[self.direction, :, :]
+            
+        else:
+
+            # Find curve with largest dotproduct with heading
+            curves = self._get_tile(i, j)["curves"]
+            curve_headings = curves[:, -1, :] - curves[:, 0, :]
+            curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
+            dir_vec = get_dir_vec(angle)
+
+            dot_prods = np.dot(curve_headings, dir_vec)
+
+            # Closest curve = one with largest dotprod
+            cps = curves[np.argmax(dot_prods)]
+
+        # Find closest point and tangent to this curve
+        t = bezier_closest(cps, pos)
+        point = bezier_point(cps, t)
+        tangent = bezier_tangent(cps, t)
+
+        return point, tangent
+    
+    def closest_traj_point(self, pos: np.array, angle: float, direction):
+        # Find closest point and tangent to this curve
+        
+        cps,_,_ = self.compute_trajectory(direction, 20)
+        t = bezier_closest(cps, pos)
+        point = bezier_point(cps, t)
+        tangent = bezier_tangent(cps, t)
+
+        return point, tangent
+        
+        
     def get_lane_pos2(self, pos, angle):
         """
         Get the position of the agent relative to the center of the right lane
@@ -1617,7 +1679,10 @@ class Simulator(gym.Env):
                         if tuple(self.get_grid_coords(o.pos)) == (obj_i, obj_j) and o != obj
                     ]
 
-                    obj.step_duckiebot(delta_time, self.closest_curve_point, same_tile_obj)
+                    obj.step_duckiebot(delta_time, self.closest_curve_point,same_tile_obj)
+                    #pose = obj.pos[0], obj.pos[2], obj.angle
+                    #v_left, v_right, _ = self.duckiebot_controller.pure_pursuit(pose)
+                    
             else:
                 # print("stepping all objects")
                 obj.step(delta_time)
@@ -1709,17 +1774,23 @@ class Simulator(gym.Env):
                     pts_after = [graphics.bezier_point(points_after, i / (n_steps - 1)) for i in range(0, n_steps)]
                     pts_after.pop(0)
                     pts = pts_before+pts_middle+pts_after
+                    cps = np.vstack((points_before, cps, points_after))
                 
                     
-                if trajectory == "N2R":
+                if trajectory == "S2R":
                     
-                    direction = "N2R"
-                    cps = self._get_curve(i,j)[1, :, :]
-                    points_before = self._get_curve(i-1,j)[0,:,:]
+                    direction = "S2R"
+                    cps = self._get_curve(i,j)[8, :, :]
+                    points_before = self._get_curve(i,j+1)[1,:,:]
                     points_after = self._get_curve(i+1,j)[0, :, :]
-                    cps_stacked = np.vstack((cps, points_after))
-                    cps_stacked = np.vstack((points_before, cps_stacked))
-                    pts = [graphics.bezier_point(cps_stacked, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_before = [graphics.bezier_point(points_before, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_middle = [graphics.bezier_point(cps, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_middle.pop(0)
+                    pts_after = [graphics.bezier_point(points_after, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_after.pop(0)
+                    pts = pts_before+pts_middle+pts_after
+                    cps = np.vstack((points_before, cps, points_after))
+                    print(cps)
                     
         pts_2d = [[item[0], item[2]] for item in pts]
         return cps, np.asarray(pts_2d), direction
@@ -1728,6 +1799,7 @@ class Simulator(gym.Env):
     def compute_reward(self, pos, angle, speed):
         # Compute the collision avoidance penalty
         col_penalty = self.proximity_penalty2(pos, angle)
+        print(40*col_penalty)
 
         # Get the position relative to the right lane tangent
         try:

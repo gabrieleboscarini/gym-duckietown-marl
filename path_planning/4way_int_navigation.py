@@ -22,8 +22,6 @@ def _navigate():
     
     #path = path_generate_4way(env=env,trajectory="N2L", n_steps=20)
     
-    print(path.shape)
-    
     controller = Controller(direction='l', path=path, wheel_distance=0.102)
     
     done = False

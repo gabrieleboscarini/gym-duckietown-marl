@@ -334,7 +334,16 @@ class DuckiebotObj(WorldObj):
         self.obj_corners = agent_boundbox(
             self.pos, self.robot_width, self.robot_length, get_dir_vec(self.angle), get_right_vec(self.angle)
         )
-
+        
+    def reset(self):
+        self.pos = [1.6, 0, 2.35]
+        self.angle = np.pi/2
+        self.y_rot = np.rad2deg(self.angle)
+        # Recompute the bounding boxes (BB) for the duckiebot
+        self.obj_corners = agent_boundbox(
+            self.pos, self.robot_width, self.robot_length, get_dir_vec(self.angle), get_right_vec(self.angle)
+        )
+        
 
 class DuckieObj(WorldObj):
     def __init__(self, obj, domain_rand: bool, safety_radius_mult: float, walk_distance: float):
