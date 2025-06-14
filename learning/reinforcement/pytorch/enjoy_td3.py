@@ -9,12 +9,12 @@ from pyglet.window import Window
 
 
 # Duckietown Specific
-from src.gym_duckietown.envs.duckietown_env import PurePursuitEnv
+from src.gym_duckietown.envs.duckietown_env import multibot_env
 from learning.reinforcement.pytorch.td3 import TD3
 
 def _enjoy():
     # Launch the env with our helper function
-    env = PurePursuitEnv(
+    env = multibot_env(
             seed=123,  # random seed
             map_name="4way_multi",
             max_steps=500001,  # we don't want the gym to reset itself
@@ -50,7 +50,7 @@ def _enjoy():
             env.render("top_down")
             
         done = False
-        obs, _ = env.reset()
+        obs, _ = env.reset("top_down")
 
 if __name__ == "__main__":
     _enjoy()

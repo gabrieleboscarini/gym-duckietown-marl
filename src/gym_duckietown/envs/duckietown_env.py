@@ -2,12 +2,34 @@
 import numpy as np
 from gymnasium import spaces
 import gymnasium as gym
+import math
 
 from ..simulator import Simulator
 from .. import logger
 from path_planning.controller import Controller 
 from scipy.spatial.distance import cdist
 
+from duckietown_world import (
+    get_DB18_nominal,
+    get_DB18_uncalibrated,
+    get_texture_file,
+    MapFormat1,
+    MapFormat1Constants,
+    MapFormat1Constants as MF1C,
+    MapFormat1Object,
+    SE2Transform,
+)
+
+from src.gym_duckietown.graphics import (
+    bezier_closest,
+    bezier_draw,
+    bezier_point,
+    bezier_tangent,
+    create_frame_buffers,
+    gen_rot_matrix,
+    load_texture,
+    Texture,
+)
 
 class PurePursuitEnv(Simulator):
     
@@ -193,8 +215,8 @@ class multibot_env(Simulator):
                                        high=np.array([1.5, 1.0]),
                                        dtype=np.float32)
         
-        self.observation_space = spaces.Box(low=np.array([0, 0,-3.141,0,0,0,0]),
-                                       high=np.array([3, 3,3.141,1.20,3,3,2]),
+        self.observation_space = spaces.Box(low=np.array([0, 0,-3.141,0,0,0,0,0,0,-3.141,0]),
+                                       high=np.array([3, 3,3.141,1.20,3,3,2,3,3,3.141,0.2]),
                                        dtype=np.float32)
         
         _,self.path,self.direction = self.compute_trajectory("N2L", 20)
@@ -207,7 +229,14 @@ class multibot_env(Simulator):
         
         self.distance_covered = 0
         
+        for obj in self.objects:
+            if obj.kind == MapFormat1Constants.KIND_DUCKIEBOT:
+                if not obj.static:
+                    self.duckiebot_2 = obj
+        
         self.reset(seed=self.seed_value)
+        
+        
         
         
     def _done_pose(self, pos):
@@ -215,13 +244,102 @@ class multibot_env(Simulator):
         coords = self.get_grid_coords(pos)
         tile = self._get_tile(*coords)
         
-        if self.direction == "N2L":
+        goal_pos = np.array([2.4, 0, 1.58])
+        tolerance = 0.1  # success zone radius (in meters)
+
+        if np.allclose(self.cur_pos, goal_pos, atol=tolerance):
             
-            if tile["coords"] == (4,2):
+        #if tile["coords"] == (4,2) or tile["coords"] == (0,2) or tile["coords"] == (2,4):
                 
-                done = True
+            done = True
                 
         return done
+    
+    def get_dir_vec(self, cur_angle: float) -> np.ndarray:
+        """
+        Vector pointing in the direction the agent is looking
+        """
+
+        x = math.cos(cur_angle)
+        z = -math.sin(cur_angle)
+        return np.array([x, 0, z])
+    
+    def get_lane_pos(self, pos, angle):
+        """
+        Get the position of the agent relative to the center of the right lane
+
+        Raises NotInLane if the Duckiebot is not in a lane.
+        """
+
+        # Get the closest point along the right lane's Bezier curve,
+        # and the tangent at that point
+        point, tangent = self.closest_curve_point_2(pos, angle)
+        if point is None or tangent is None:
+            msg = f"Point not in lane: {pos}"
+            #raise NotInLane(msg)
+
+        assert point is not None and tangent is not None
+
+        # Compute the alignment of the agent direction with the curve tangent
+        dirVec = self.get_dir_vec(angle)
+        dotDir = np.dot(dirVec, tangent)
+        dotDir = np.clip(dotDir, -1.0, +1.0)
+
+        # Compute the signed distance to the curve
+        # Right of the curve is negative, left is positive
+        posVec = pos - point
+        upVec = np.array([0, 1, 0])
+        rightVec = np.cross(tangent, upVec)
+        signedDist = np.dot(posVec, rightVec)
+
+        # Compute the signed angle between the direction and curve tangent
+        # Right of the tangent is negative, left is positive
+        angle_rad = math.acos(dotDir)
+
+        if np.dot(dirVec, rightVec) < 0:
+            angle_rad *= -1
+
+        angle_deg = np.rad2deg(angle_rad)
+        # return signedDist, dotDir, angle_deg
+
+        return signedDist,dotDir,angle_deg, angle_rad
+    
+    
+    def closest_curve_point_2(
+        self, pos: np.array, angle: float
+    ):
+        """
+        Get the closest point on the curve to a given point
+        Also returns the tangent at that point.
+
+        Returns None, None if not in a lane.
+        """
+
+        i, j = self.get_grid_coords(pos)
+        tile = self._get_tile(i, j)
+
+        if tile is None or not tile["drivable"]:
+            return None, None
+             
+        else:
+
+            # Find curve with largest dotproduct with heading
+            curves = self._get_tile(i, j)["curves"]
+            curve_headings = curves[:, -1, :] - curves[:, 0, :]
+            curve_headings = curve_headings / np.linalg.norm(curve_headings).reshape(1, -1)
+            dir_vec = self.get_dir_vec(angle)
+
+            dot_prods = np.dot(curve_headings, dir_vec)
+
+            # Closest curve = one with largest dotprod
+            cps = curves[np.argmax(dot_prods)]
+
+        # Find closest point and tangent to this curve
+        t = bezier_closest(cps, pos)
+        point = bezier_point(cps, t)
+        tangent = bezier_tangent(cps, t)
+
+        return point, tangent
     
             
     def reward_function(self, actual_position, prev_position):
@@ -235,6 +353,21 @@ class multibot_env(Simulator):
         self.distance_covered += step_distance
         
         reward = -( +1.0 * self.cte**2 + 1.0*(v_ref - self.speed)**2) #+ 0.2*self.distance_covered
+        
+        return reward
+    
+    def reward_function_pp(self, actual_position, prev_position):
+        
+        v_ref = 0.3
+        col_penalty = self.proximity_penalty2(self.cur_pos, self.cur_angle)
+        
+        dist_all = cdist(self.path,actual_position,'euclidean').flatten()
+        self.cte = np.min(dist_all)
+
+        step_distance = np.linalg.norm(actual_position - prev_position)
+        self.distance_covered += step_distance
+        
+        reward = -( +1.0 * self.cte**2 + 1*(v_ref - self.speed)**2) + col_penalty #+ 0.2*self.distance_covered
         
         return reward
         
@@ -258,7 +391,7 @@ class multibot_env(Simulator):
         #if the agent reach the target tile    
         elif self._done_pose(self.cur_pos):
             msg = "Stopping the simulator because we arrived at target"
-            reward = 0
+            reward = 1
             done_code = "done-pose"
             done = True
             
@@ -269,6 +402,13 @@ class multibot_env(Simulator):
             done = True
             reward = 0
             done_code = "max-steps-reached"
+            
+        elif self.proximity_penalty2(self.cur_pos,self.cur_angle) > 0:
+            done = False
+            reward = self.reward_function_pp(actual_position, prev_position)
+            msg = ""
+            done_code = "in-progress"
+            
         else:
             done = False
             reward = self.reward_function(actual_position, prev_position)
@@ -281,7 +421,7 @@ class multibot_env(Simulator):
         
     def reset(self, seed=None):
         
-        _, info = super().reset(seed=seed)
+        _, info = super().reset(seed=self.seed_value)
         
         self.distance_covered = 0
         
@@ -297,7 +437,11 @@ class multibot_env(Simulator):
                         self.speed,
                         self.goal[0,0],  #prior lookahead x
                         self.goal[0,1],  #prior lookahead y
-                        self.controller.vel
+                        self.controller.vel,
+                        self.duckiebot_2.pos[0],
+                        self.duckiebot_2.pos[2],
+                        self.duckiebot_2.angle,
+                        self.proximity_penalty2(self.cur_pos,self.cur_angle)
                         ])
         
         return self.obs, info
@@ -340,7 +484,11 @@ class multibot_env(Simulator):
                         self.speed,
                         self.goal[0,0], #prior lookahead x
                         self.goal[0,1], #prior lookahead y
-                        self.controller.vel
+                        self.controller.vel,
+                        self.duckiebot_2.pos[0],
+                        self.duckiebot_2.pos[2],
+                        self.duckiebot_2.angle,
+                        self.proximity_penalty2(self.cur_pos,self.cur_angle)
                         ])
         
         misc = self.get_agent_info()
