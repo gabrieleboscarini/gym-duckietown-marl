@@ -260,8 +260,14 @@ class DuckiebotObj(WorldObj):
 
         dot = np.dot(get_right_vec(self.angle), point_vec)
         steering = self.gain * -dot
+        
+        prev_pos = self.pos
 
         self._update_pos([self.velocity, steering], delta_time)
+        
+        # Compute the robot's speed
+        delta_pos = self.pos - prev_pos
+        self.obj_speed = np.linalg.norm(delta_pos) / delta_time
 
     def check_collision(self, agent_corners, agent_norm):
         """
@@ -279,6 +285,15 @@ class DuckiebotObj(WorldObj):
         score = d - agent_safety_rad - self.safety_radius
 
         return min(0, score)
+        #return 0 if score > 0 else -np.exp(-score)
+        
+    '''def proximity(self, agent_pos, agent_safety_rad, scale=1):
+        d = np.linalg.norm(agent_pos - self.pos)
+        safety_margin = agent_safety_rad + self.safety_radius
+        overlap = max(0.0, safety_margin - d)
+    
+        return -np.exp(scale * overlap) if overlap > 0 else 0.0'''
+        
 
     def _update_pos(self, action, deltaTime):
         vel, angle = action
@@ -336,6 +351,7 @@ class DuckiebotObj(WorldObj):
         )
         
     def reset(self):
+        self.obj_speed = 0
         self.pos = [1.6, 0, 2.35]
         self.angle = np.pi/2
         self.y_rot = np.rad2deg(self.angle)

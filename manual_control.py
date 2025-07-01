@@ -15,6 +15,8 @@ import pyglet
 from pyglet.window import key
 
 from src.gym_duckietown.envs import DuckietownEnv
+from src.gym_duckietown.envs.duckietown_env import multibot_env
+
 
 # from experiments.utils import save_img
 

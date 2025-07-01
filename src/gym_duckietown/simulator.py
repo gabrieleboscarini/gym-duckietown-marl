@@ -68,6 +68,7 @@ from .objmesh import get_mesh, MatInfo, ObjMesh
 from .randomization import Randomizer
 from .utils import get_subdir_path
 from path_planning.controller import Controller
+from scipy.spatial.distance import cdist
 
 DIM = 0.5
 
@@ -1799,6 +1800,7 @@ class Simulator(gym.Env):
     def compute_reward(self, pos, angle, speed):
         # Compute the collision avoidance penalty
         col_penalty = self.proximity_penalty2(pos, angle)
+        print(col_penalty)
 
         # Get the position relative to the right lane tangent
         try:
@@ -1809,7 +1811,44 @@ class Simulator(gym.Env):
 
             # Compute the reward
             reward = +1.0 * speed * lp.dot_dir + -10 * np.abs(lp.dist) + +40 * col_penalty
+            print(f"speed: {speed * lp.dot_dir}")
+            print(f"dist: {-10 * np.abs(lp.dist)}")
+            print(f"penalty: {40 * col_penalty}")
             
+        return reward
+    
+    def new_reward_function(self):
+        
+        v_ref = 0.2
+        col_penalty = self.proximity_penalty2(self.cur_pos, self.cur_angle)
+        
+        actual_position = np.zeros((1,2))
+        actual_position[0,0]=self.cur_pos[0]
+        actual_position[0,1]=self.cur_pos[2]
+        
+        _,self.path,_ = self.compute_trajectory("N2L", 20)
+        
+        dist_all = cdist(self.path, actual_position, 'euclidean').flatten()
+
+        self.cte = np.min(dist_all)
+
+        #step_distance = np.linalg.norm(actual_position - prev_position)
+        #self.distance_covered += step_distance
+
+        cte_penalty = 2 - 10*np.abs(self.cte)
+        speed_penalty = np.abs(v_ref - self.speed)
+        
+        # New structure
+        reward = 1*self.speed  # base reward for moving
+        reward += cte_penalty
+        #reward -= 10 * speed_penalty
+        reward += col_penalty 
+        
+        print(f"cte: {2-10*self.cte}")
+        print(f"vel {self.speed}")
+        print(f"col_penalty: {col_penalty}")
+        print(f"reward: {reward}")
+        
         return reward
 
     def step(self, action: np.ndarray):
@@ -1825,7 +1864,7 @@ class Simulator(gym.Env):
 
         d = self._compute_done_reward()
         misc["Simulator"]["msg"] = d.done_why
-
+        
         return obs, d.reward, d.done, False, misc
 
     def _compute_done_reward(self) -> DoneRewardInfo:
@@ -1845,7 +1884,8 @@ class Simulator(gym.Env):
             done_code = "max-steps-reached"
         else:
             done = False
-            reward = self.compute_reward(self.cur_pos, self.cur_angle, self.robot_speed)
+            #reward = self.compute_reward(self.cur_pos, self.cur_angle, self.robot_speed)
+            reward = self.new_reward_function()
             msg = ""
             done_code = "in-progress"
         return DoneRewardInfo(done=done, done_why=msg, reward=reward, done_code=done_code)

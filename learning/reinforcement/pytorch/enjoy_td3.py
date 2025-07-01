@@ -15,7 +15,7 @@ from learning.reinforcement.pytorch.td3 import TD3
 def _enjoy():
     # Launch the env with our helper function
     env = multibot_env(
-            seed=123,  # random seed
+            seed=0,  # random seed
             map_name="4way_multi",
             max_steps=500001,  # we don't want the gym to reset itself
             domain_rand=False,
