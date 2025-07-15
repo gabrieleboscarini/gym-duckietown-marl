@@ -9,12 +9,12 @@ from pyglet.window import Window
 
 
 # Duckietown Specific
-from src.gym_duckietown.envs.duckietown_env import multibot_env
+from src.gym_duckietown.envs.duckietown_env import multibot_env, curriculumNav, ego_multibot_env
 from learning.reinforcement.pytorch.td3 import TD3
 
 def _enjoy():
     # Launch the env with our helper function
-    env = multibot_env(
+    env = ego_multibot_env(
             seed=0,  # random seed
             map_name="4way_multi",
             max_steps=500001,  # we don't want the gym to reset itself
@@ -35,20 +35,24 @@ def _enjoy():
 
     # Initialize policy
     policy = TD3(state_dim, action_dim, max_action, low_action)
-    policy.load(filename="learning/reinforcement/pytorch/runs/models/seed0/td3")
+    policy.load(filename="learning/reinforcement/pytorch/runs/models/seed11/td3")
 
     obs, _ = env.reset()
     done = False
 
     while True:
+        total_reward = 0.0
         while not done:
             action = policy.select_action(np.array(obs))
             #action = env.action_space.sample()
             env_action = low_action + (action + 1.0) * 0.5 * (max_action - low_action)
             # Perform action
             obs, reward, done, _, _ = env.step(env_action)
+            total_reward += reward
+            print("State:", np.round(obs, 3))  # Round for readability
             env.render("top_down")
             
+        print(f"\nEpisode finished — Total reward: {total_reward:.2f}\n")    
         done = False
         obs, _ = env.reset("top_down")
 

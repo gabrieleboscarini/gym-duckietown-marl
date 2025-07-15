@@ -391,7 +391,7 @@ class Simulator(gym.Env):
 
         self.last_action = np.array([0, 0])
         self.wheelVels = np.array([0, 0])
-        self.direction = np.random.randint(6,9)
+        self.obs_direction = np.random.randint(6,9)
         
     def _init_vlists(self):
 
@@ -549,7 +549,7 @@ class Simulator(gym.Env):
         # Robot's current speed
         self.speed = 0.0
         
-        self.direction = np.random.randint(6,9)
+        self.obs_direction = np.random.randint(6,9)
 
         if self.randomize_maps_on_reset:
             map_name = self.np_random.choice(self.map_names)
@@ -1437,7 +1437,7 @@ class Simulator(gym.Env):
         if tile["kind"] == "4way":
             
             #direction = np.random.randint(6,9)
-            cps = self._get_curve(i,j)[self.direction, :, :]
+            cps = self._get_curve(i,j)[self.obs_direction, :, :]
             
         else:
 
@@ -1792,6 +1792,34 @@ class Simulator(gym.Env):
                     pts = pts_before+pts_middle+pts_after
                     cps = np.vstack((points_before, cps, points_after))
                     print(cps)
+                    
+                if trajectory == "N2S":
+                    
+                    direction = "N2S"
+                    cps = self._get_curve(i,j)[1, :, :]
+                    points_before = self._get_curve(i,j-1)[1,:,:]
+                    points_after = self._get_curve(i,j+1)[0, :, :]
+                    pts_before = [graphics.bezier_point(points_before, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_middle = [graphics.bezier_point(cps, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_middle.pop(0)
+                    pts_after = [graphics.bezier_point(points_after, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_after.pop(0)
+                    pts = pts_before+pts_middle+pts_after
+                    cps = np.vstack((points_before, cps, points_after))
+                    
+                if trajectory == "N2R":
+                    
+                    direction = "N2R"
+                    cps = self._get_curve(i,j)[2, :, :]
+                    points_before = self._get_curve(i,j-1)[1,:,:]
+                    points_after = self._get_curve(i-1,j)[0, :, :]
+                    pts_before = [graphics.bezier_point(points_before, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_middle = [graphics.bezier_point(cps, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_middle.pop(0)
+                    pts_after = [graphics.bezier_point(points_after, i / (n_steps - 1)) for i in range(0, n_steps)]
+                    pts_after.pop(0)
+                    pts = pts_before+pts_middle+pts_after
+                    cps = np.vstack((points_before, cps, points_after))
                     
         pts_2d = [[item[0], item[2]] for item in pts]
         return cps, np.asarray(pts_2d), direction

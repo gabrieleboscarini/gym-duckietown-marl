@@ -109,7 +109,7 @@ class TD3(object):
         self.total_it = 0
         
         self.beta_start = 0.4
-        self.beta_frames = 100000  # Total steps over which to anneal beta
+        self.beta_frames = 500000  # Total steps over which to anneal beta
         self.beta = self.beta_start
 
 

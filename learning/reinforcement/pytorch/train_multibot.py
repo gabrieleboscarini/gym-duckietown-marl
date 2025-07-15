@@ -10,7 +10,7 @@ import numpy as np
 from learning.reinforcement.pytorch.td3 import TD3
 from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, DtRewardWrapper, ActionWrapper, ResizeWrapper
 from learning.reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
-from src.gym_duckietown.envs.duckietown_env import multibot_env
+from src.gym_duckietown.envs.duckietown_env import multibot_env, curriculumNav, ego_multibot_env
 from pyglet.window import Window 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def _train(args):
     os.makedirs(models_path, exist_ok=True)
     
     # Launch the env
-    env = multibot_env(
+    env = ego_multibot_env(
             seed=args.seed,  # random seed
             map_name="4way_multi",
             max_steps=500001,  # we don't want the gym to reset itself
@@ -74,6 +74,19 @@ def _train(args):
     env_counter = 0
     reward = 0
     episode_timesteps = 0
+    expl_noise = args.expl_noise
+    
+    '''expl_noise_start = args.expl_noise
+    expl_noise_end = 0.1
+    expl_noise_decay_steps = 700000'''
+    
+    
+    # === Noise Schedule Parameters ===
+    noise_start = 0.2       # High initial noise
+    noise_end = 0.05        # Low final noise
+    noise_warmup_episodes = 500                # Keep noise_start for first 10 episodes
+    noise_decay_episodes = 500                 # Linearly decay noise over next 90 episodes
+
     print("Starting training")
     while total_timesteps < args.max_timesteps:
 
@@ -105,6 +118,14 @@ def _train(args):
             episode_reward = 0
             episode_num += 1
             episode_timesteps = 0
+            
+            
+         # Compute episode noise schedule
+        if episode_num < noise_warmup_episodes:
+            expl_noise_vec = noise_start
+        else:
+            decay_ratio = min((episode_num - noise_warmup_episodes) / noise_decay_episodes, 1.0)
+            expl_noise_vec = noise_start - decay_ratio * (noise_start - noise_end)
 
         # Select action randomly or according to policy
         if total_timesteps < args.start_timesteps:
@@ -112,15 +133,21 @@ def _train(args):
             env_action = action
         else:
             action = policy.select_action(np.array(obs))
-            if args.expl_noise != 0:
-                action = (action + np.random.normal(0, args.expl_noise, size=env.action_space.shape[0])).clip(
-                    -1, 1
-                )
+            # Apply per-action-dimension exploration noise
+            noise = np.random.normal(0, expl_noise_vec)
+            action = (action + noise).clip(-1, 1)
                 
-            env_action = low_action + (action + 1.0) * 0.5 * (max_action - low_action)    
+            env_action = low_action + (action + 1.0) * 0.5 * (max_action - low_action)
+            
+            '''if expl_noise > 0.1:
+                
+                expl_noise -= (args.expl_noise-0.1)/2e5 
+            decay_step = min(total_timesteps - args.start_timesteps, expl_noise_decay_steps)
+            if decay_step >= 0:
+                expl_noise = expl_noise_start - (expl_noise_start - expl_noise_end) * (decay_step / expl_noise_decay_steps)'''   
              
         # Perform action
-        #print(env_action)
+        
         new_obs, reward, done,_, _ = env.step(env_action)
 
         if episode_timesteps >= args.env_timesteps:
@@ -152,15 +179,15 @@ def _train(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--seed", default=0, type=int)  # Sets Gym, PyTorch and Numpy seeds
+    parser.add_argument("--seed", default=11, type=int)  # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument(
         "--start_timesteps", default=1e4, type=int
     )  # How many time steps purely random policy is run for
     parser.add_argument("--eval_freq", default=5e3, type=float)  # How often (time steps) we evaluate
-    parser.add_argument("--max_timesteps", default=6e5, type=float)  # Max time steps to run environment for
+    parser.add_argument("--max_timesteps", default=500000, type=float)  # Max time steps to run environment for
     parser.add_argument("--save_models", action="store_true", default=True)  # Whether or not models are saved
     parser.add_argument("--expl_noise", default=0.1, type=float)  # Std of Gaussian exploration noise
-    parser.add_argument("--batch_size", default=256, type=int)  # Batch size for both actor and critic
+    parser.add_argument("--batch_size", default=128, type=int)  # Batch size for both actor and critic
     parser.add_argument("--discount", default=0.99, type=float)  # Discount factor
     parser.add_argument("--tau", default=0.005, type=float)  # Target network update rate
     parser.add_argument(

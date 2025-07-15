@@ -2,7 +2,7 @@
 
 # Script to reproduce results
 
-for ((i=0;i<5;i+=1))
+for ((i=10;i<16;i+=1))
 do 
 	python train_multibot.py \
 	--seed $i

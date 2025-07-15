@@ -400,8 +400,11 @@ class multibot_env(Simulator):
         #speed_penalty = np.abs(v_ref - self.speed)
         
         # New structure
-        reward = 1.5*self.speed  # base reward for moving
-        reward += cte_penalty
+        #reward = 0.1*self.speed  # base reward for moving
+        reward = cte_penalty
+        
+        #if col_penalty == 0:
+            #reward += self.speed
         #reward -= 10 * speed_penalty
         reward += 40* col_penalty 
         
@@ -421,25 +424,25 @@ class multibot_env(Simulator):
         if not self._valid_pose(self.cur_pos, self.cur_angle):
             msg = "Stopping the simulator because we are at an invalid pose."
             # logger.info(msg)
-            reward = -50
+            reward = -100
             done_code = "invalid-pose"
             done = True
             
         elif self.cte > 0.25:
             msg = "Stopping the simulator because cte exceeded the treshold"
-            reward = -50
+            reward = -100
             done_code = "invalid-pose"
             done = True
             
         #if the agent reach the target tile    
         elif target_reached:
             msg = "Stopping the simulator because we arrived at target"
-            reward = 50
+            reward = 200
             done_code = "done-pose"
             done = True
             
         #if the agent reach the checkpoint    
-        elif np.allclose(self.cur_pos, np.array([1.53, 0, 1.53]), atol=0.05):
+        elif np.allclose(self.cur_pos, np.array([1.85, 0, 1.59]), atol=0.02):
             msg = "Stopping the simulator because we arrived at checkpoint"
             reward = 50
             done = False
@@ -799,9 +802,9 @@ class DuckietownNav(DuckietownEnv):
 class Curriculum:
     def __init__(self):
         self.levels = [
-            (0, 6),        # Easy: trajectory 1
-            (100000, 7),    # Medium: trajectory 1 and 2
-            (300000, 8),    # Hard: all trajectories
+            (0, 7),        # Easy: trajectory 1
+            (500000, 8),    # Medium: trajectory 1 and 2
+            (1200000, 9),    # Hard: all trajectories
         ]
 
     def get_difficulty(self, step):
@@ -825,7 +828,7 @@ class curriculumNav(Simulator):
                                        high=np.array([3, 3,3.141,1.20,3,3,2,3,3,1,1]),
                                        dtype=np.float32)
         
-        _,self.path,self.direction = self.compute_trajectory("N2L", 20)
+        _,self.path,_ = self.compute_trajectory("N2L", 20)
         
         self.controller = Controller(direction='l', path=self.path, wheel_distance=0.102)
         
@@ -839,12 +842,12 @@ class curriculumNav(Simulator):
             if obj.kind == MapFormat1Constants.KIND_DUCKIEBOT:
                 if not obj.static:
                     self.duckiebot_2 = obj
+                    
+        self.curriculum = Curriculum()
+        
+        self.training_step = 0
         
         self.reset(seed=self.seed_value)
-        
-        self.curriculum = Curriculum()
-        self.training_step = 0
-
            
     def _done_pose(self, pos):
         done = False
@@ -891,7 +894,7 @@ class curriculumNav(Simulator):
         #print(f"cte: {self.cte**2}")
         #print(f"vel {self.speed}")
         #print(f"col_penalty: {col_penalty}")
-        #print(f"reward: {reward}")'''
+        #print(f"reward: {reward}")
         
         return reward
         
@@ -922,7 +925,7 @@ class curriculumNav(Simulator):
             done = True
             
         #if the agent reach the checkpoint    
-        elif np.allclose(self.cur_pos, np.array([1.53, 0, 1.53]), atol=0.05):
+        elif np.allclose(self.cur_pos, np.array([1.79, 0, 1.57]), atol=0.05):
             msg = "Stopping the simulator because we arrived at checkpoint"
             reward = 50
             done = False
@@ -956,6 +959,12 @@ class curriculumNav(Simulator):
         
         _, info = super().reset(seed=self.seed_value)
         
+        num_trajectories = self.curriculum.get_difficulty(self.training_step)
+        
+        self.obs_direction = np.random.randint(6,num_trajectories)
+        
+        #print(self.obs_direction)
+        
         self.distance_covered = 0
         
         self.cte = 0
@@ -981,11 +990,6 @@ class curriculumNav(Simulator):
                         self.relative_position[2],
                         np.cos(self.duckiebot_2.angle),
                         np.sin(self.duckiebot_2.angle)
-                        #self.duckiebot_2.pos[0],
-                        #self.duckiebot_2.pos[2],
-                        #self.duckiebot_2.angle
-                        #self.obj_dist
-                        #self.proximity_penalty2(self.cur_pos,self.cur_angle)
                         ])
         
         return self.obs, info
@@ -1038,21 +1042,314 @@ class curriculumNav(Simulator):
                         self.relative_position[2],
                         np.cos(self.duckiebot_2.angle),
                         np.sin(self.duckiebot_2.angle)
-                        #self.duckiebot_2.pos[0],
-                        #self.duckiebot_2.pos[2],
-                        #self.duckiebot_2.angle,
-                        #self.obj_dist
-                        #self.proximity_penalty2(self.cur_pos,self.cur_angle)
                         ])
         
         misc = self.get_agent_info()
         
         #update goal
         self.goal = current_goal
+        
+        self.training_step += 1
 
         #d = self._compute_done_reward()
         
         reward, done, msg, done_code = self._compute_done_reward(actual_position,prev_position)
+        misc["Simulator"]["msg"] = msg
+        
+        return self.obs, reward, done, _, misc
+    
+    
+class ego_multibot_env(Simulator):
+    
+    def __init__(self,**kwargs):
+        Simulator.__init__(self, **kwargs)
+        
+        logger.info("ego_using multibot_Env")
+        
+        self.action_space = spaces.Box(
+                                    low=np.array([0.01], dtype=np.float32),
+                                    high=np.array([0.5], dtype=np.float32),
+                                    dtype=np.float32)
+                                       
+        self.observation_space = spaces.Box(low=np.array([0,-3.141,0,0,0,0,0,0,-1,-1,0]),
+                                       high=np.array([2,3.141,2,3,3,2,3,3,1,1,3]),
+                                       dtype=np.float32)
+        
+        _,self.path,self.direction = self.compute_trajectory("N2L", 20)
+        
+        self.controller = Controller(direction='l', path=self.path, wheel_distance=0.102)
+        
+        print("controller vel:", self.controller.vel)
+        
+        self.obs = None  # Initialize state
+        
+        self.distance_covered = 0
+        
+        for obj in self.objects:
+            if obj.kind == MapFormat1Constants.KIND_DUCKIEBOT:
+                if not obj.static:
+                    self.duckiebot_2 = obj
+        
+        self.reset(seed=self.seed_value)
+        
+        
+    def _done_pose(self, pos):
+        done = False
+        coords = self.get_grid_coords(pos)
+        tile = self._get_tile(*coords)
+        
+        if self.direction == "N2L":
+            goal_pos = np.array([2.08, 0, 1.58])
+        if self.direction == "N2S":
+            goal_pos = np.array([1.34, 0, 2.00])
+        if self.direction == "N2R":
+            goal_pos = np.array([0.9, 0, 1.33])
+            
+        tolerance = 0.1  # success zone radius (in meters)
+    
+        if np.allclose(self.cur_pos, goal_pos, atol=tolerance):
+                done = True
+            
+        #if tile["coords"] == (4,2) or tile["coords"] == (0,2) or tile["coords"] == (2,4): 
+        return done
+    
+    def normalize(self, v):
+        norm = np.linalg.norm(v)
+        return v / norm if norm > 1e-6 else np.zeros_like(v)
+    
+    def new_reward_function(self, actual_position, prev_position, current_goal):
+        
+        v_ref = 0.2
+        col_penalty = self.proximity_penalty2(self.cur_pos, self.cur_angle)
+        
+        dist_all = cdist(self.path, actual_position, 'euclidean').flatten()
+        cte = np.min(dist_all)
+
+        delta_pos = actual_position - prev_position
+        delta_pos = delta_pos.squeeze()
+        
+        # Compute the local tangent to the path (lookahead direction)
+        path_direction = self.normalize(current_goal - actual_position)
+        path_direction = path_direction.squeeze()
+        
+        # Project delta_pos onto path_direction → scalar "progress" value
+        progress = np.dot(delta_pos, path_direction)  # positive if forward, negative if backward
+
+        speed_penalty = v_ref - self.speed
+        
+        obj_dist = np.linalg.norm([self.duckiebot_2.pos[0] - self.cur_pos[0],
+                                        self.duckiebot_2.pos[2]- self.cur_pos[2]])
+        
+        lp = self.get_lane_pos2(self.cur_pos, self.cur_angle)
+        
+        # Track progress to goal
+        target_pos = np.array([2.08, 1.58])
+        cur_dist = np.linalg.norm(actual_position - target_pos)
+        prev_dist = np.linalg.norm(prev_position - target_pos)
+        
+        
+        # New structure
+        
+        #reward = 1.0
+        
+        #reward = 1000 * (prev_dist - cur_dist)  # progress reward
+        
+        reward =- 1*np.abs(cte)
+        
+        # Step penalty to avoid standing still
+        #reward -= 0.01
+        
+        reward -= 1*np.abs(speed_penalty)
+        
+        #reward +=10*self.speed
+        reward += 1.0* col_penalty
+    
+        #print("speed_penalty", speed_penalty)
+        #print("speed", self.speed)
+        #print("cte", 1*np.abs(cte))
+        #print("speed", self.speed)
+        #print("progress", 5.0 * (prev_dist - cur_dist))
+        #print("penalty", 1* col_penalty)
+        #print("reward", reward)
+        
+        
+        
+        #reward += 10*progress
+        
+        #if col_penalty < 0:
+             #reward -= 1 * (self.controller.vel ** 2) / (obj_dist + 1e-3)
+        #print(f"cte: {10*(cte**2)}")
+        #print(f"vel {self.speed}")
+        #print(f"col_penalty: {40*col_penalty}")
+        #print(f"progress: {100*progress}")
+        #print(f"reward: {reward}")
+        
+        return reward
+        
+        
+    def _compute_done_reward(self, actual_position, prev_position, current_goal):
+        
+        done_pose = self._done_pose(self.cur_pos)
+        
+        # If the agent is not in a valid pose (on drivable tiles)
+        if not self._valid_pose(self.cur_pos, self.cur_angle):
+            msg = "Stopping the simulator because we are at an invalid pose."
+            # logger.info(msg)
+            reward = -10
+            done_code = "invalid-pose"
+            done = True
+            
+        elif done_pose:
+            msg = "Stopping the simulator because we arrived at target"
+            reward = 0
+            done_code = "done-pose"
+            done = True
+            print("target_reached!!!")
+            
+        # If the maximum time step count is reached
+        elif self.step_count >= self.max_steps:
+            msg = "Stopping the simulator because we reached max_steps = %s" % self.max_steps
+            # logger.info(msg)
+            done = True
+            reward = 0
+            done_code = "max-steps-reached"
+            
+        else:
+            done = False
+            reward = self.new_reward_function(actual_position, prev_position, current_goal)
+            msg = ""
+            done_code = "in-progress"
+            
+        return reward, done, msg, done_code
+        
+        
+        
+    def reset(self, seed=None):
+        
+        _, info = super().reset(seed=self.seed_value)
+        
+        self.distance_covered = 0
+        
+        self.goal = np.array([[self.cur_pos[0], self.cur_pos[2]]])
+        
+        self.controller.reset()
+        
+        obj_dist = np.linalg.norm([self.duckiebot_2.pos[0] - self.cur_pos[0],
+                                        self.duckiebot_2.pos[2]- self.cur_pos[2]])
+                                                                     
+        #relative_position = np.array(self.duckiebot_2.pos) - np.array(self.cur_pos)
+        
+        actual_position = np.zeros((1,2))
+        actual_position[0,0]=self.cur_pos[0]
+        actual_position[0,1]=self.cur_pos[2] 
+        
+        dist_all = cdist(self.path, actual_position, 'euclidean').flatten()
+        cte = np.abs(np.min(dist_all))
+        
+        # Robot position
+        x_r, z_r = self.cur_pos[0], self.cur_pos[2]
+        θ_r = self.cur_angle
+
+        # Obstacle position
+        x_o, z_o = self.duckiebot_2.pos[0], self.duckiebot_2.pos[2]
+        dx = x_o - x_r
+        dz = z_o - z_r
+
+        # Rotate into egocentric frame
+        obs_x =  np.cos(θ_r) * dx + np.sin(θ_r) * dz
+        obs_z = -np.sin(θ_r) * dx + np.cos(θ_r) * dz                                 
+
+        
+        self.obs = np.array([cte,
+                        self.cur_angle,
+                        self.speed,
+                        self.goal[0,0],  #prior lookahead x
+                        self.goal[0,1],  #prior lookahead y
+                        self.controller.vel,
+                        obs_x,
+                        obs_z,
+                        np.cos(self.duckiebot_2.angle),
+                        np.sin(self.duckiebot_2.angle),
+                        obj_dist
+                        ])
+        
+        return self.obs, info
+        
+    def step(self,action):
+        
+        prev_goal = self.goal
+        
+        # Unpack the action into look-ahead distance and velocity
+        vel = action
+        
+        # Update the controller parameters
+    
+        self.controller.update_parameters(0.25, vel[0])
+        
+        # Get the current pose of the Duckiebot
+        pose = self.cur_pos[0], self.cur_pos[2], self.cur_angle # Returns (x, y, theta)
+        
+        prev_position = np.zeros((1,2))
+        prev_position[0,0]=self.cur_pos[0]
+        prev_position[0,1]=self.cur_pos[2]
+        
+        
+        # Compute wheel velocities using pure pursuit
+        v_left, v_right, current_goal = self.controller.pure_pursuit(pose)
+
+        # Convert wheel velocities to gym-duckietown's action format
+        vels = np.array([v_left, v_right])
+        vels = np.clip(vels, -1, 1)
+        
+        for _ in range(self.frame_skip):
+            self.update_physics(vels)
+            
+        actual_position = np.zeros((1,2))
+        actual_position[0,0]=self.cur_pos[0]
+        actual_position[0,1]=self.cur_pos[2]
+        
+        dist_all = cdist(self.path, actual_position, 'euclidean').flatten()
+        cte = np.abs(np.min(dist_all))
+        
+        obj_dist = np.linalg.norm([self.duckiebot_2.pos[0] - self.cur_pos[0],
+                                        self.duckiebot_2.pos[2]- self.cur_pos[2]])
+        
+        # Robot position
+        x_r, z_r = self.cur_pos[[0, 2]]
+        θ_r = self.cur_angle
+
+        # Obstacle position
+        x_o, z_o = self.duckiebot_2.pos[[0, 2]]
+        dx = x_o - x_r
+        dz = z_o - z_r
+
+        # Rotate into egocentric frame
+        obs_x =  np.cos(θ_r) * dx + np.sin(θ_r) * dz
+        obs_z = -np.sin(θ_r) * dx + np.cos(θ_r) * dz
+        
+        #self.obj_dist = np.linalg.norm([self.duckiebot_2.pos[0] - self.cur_pos[0],
+                                        #self.duckiebot_2.pos[2]- self.cur_pos[2]])
+    
+        self.obs = np.array([cte,
+                        self.cur_angle,
+                        self.speed,
+                        prev_goal[0,0], #prior lookahead x
+                        prev_goal[0,1], #prior lookahead y
+                        self.controller.vel,
+                        obs_x,
+                        obs_z,
+                        np.cos(self.duckiebot_2.angle),
+                        np.sin(self.duckiebot_2.angle),
+                        obj_dist
+                        ])
+        
+        misc = self.get_agent_info()
+        
+        self.goal = current_goal
+
+        #d = self._compute_done_reward()
+        
+        reward, done, msg, done_code = self._compute_done_reward(actual_position,prev_position, current_goal)
         misc["Simulator"]["msg"] = msg
         
         return self.obs, reward, done, _, misc

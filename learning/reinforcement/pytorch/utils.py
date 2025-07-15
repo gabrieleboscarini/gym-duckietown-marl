@@ -59,7 +59,7 @@ class ReplayBuffer(object):
         }
 
 
-def evaluate_policy(env, policy, eval_episodes=10, max_timesteps=500):
+def evaluate_policy(env, policy, eval_episodes=10, max_timesteps=1500):
     print("---------------Evaluations---------------")
     max_action = env.action_space.high
     low_action = env.action_space.low
@@ -69,14 +69,17 @@ def evaluate_policy(env, policy, eval_episodes=10, max_timesteps=500):
         obs, _ = env.reset()
         done = False
         step = 0
+        total_reward = 0
         while not done and step < max_timesteps:
             action = policy.select_action(np.array(obs))
             env_action = low_action + (action + 1.0) * 0.5 * (max_action - low_action)
             obs, reward, done, _, _ = env.step(env_action)
-            avg_reward += reward
+            total_reward += reward
+            #avg_reward += reward
             step += 1
             #env.render()
-        print(f"Episode {ep+1}: avg reward: {avg_reward:.2f}")
+        print(f"Episode {ep+1}: Total reward: {total_reward:.2f}")
+        avg_reward += total_reward
 
     avg_reward /= eval_episodes
     print(f"\nAverage reward over {eval_episodes} episodes: {avg_reward:.2f}")

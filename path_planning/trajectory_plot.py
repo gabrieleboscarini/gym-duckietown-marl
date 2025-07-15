@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 env = helpers.launch_env()
 print("Environment initialized.")
 
-path = env.compute_trajectory("N2L", 20)[1]
+path = env.compute_trajectory("N2R", 20)[1]
 
 # Extract x and y coordinates, ignoring z
 x, y = path[:, 0], path[:, 1]

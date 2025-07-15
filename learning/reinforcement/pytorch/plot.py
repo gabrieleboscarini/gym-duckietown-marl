@@ -23,8 +23,8 @@ np.savez("rewards.npz", **rewards_dict)
 # Load your data
 #data = np.load("my_results.npz")  
 data = np.load("rewards.npz") # shape [epochs, seeds]
-print(data.files)
-# Convert to long-form DataFrame
+
+'''# Convert to long-form DataFrame
 df = pd.DataFrame([
     {'epoch': epoch, 'reward': reward, 'seed': seed_name}
     for seed_name in data.files
@@ -40,6 +40,34 @@ plt.title("Average Reward per Epoch")
 plt.xlabel("Epoch")
 plt.ylabel("Reward")
 plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()'''
+
+all_seeds = sorted(data.files)
+
+# Define two groups
+curriculum_seeds = all_seeds[:5]
+no_curriculum_seeds = all_seeds[-5:]
+
+# Convert to long-form DataFrame with a new column: group
+df = pd.DataFrame([
+    {'epoch': epoch, 'reward': reward, 'seed': seed_name,
+     'group': 'no_curriculum' if seed_name in no_curriculum_seeds else 'curriculum'}
+    for seed_name in no_curriculum_seeds + curriculum_seeds
+    for epoch, reward in enumerate(data[seed_name])
+])
+
+# Plot
+plt.figure(figsize=(10, 6))
+sns.set_theme(style="darkgrid", font_scale=1.5)
+
+# Plot average per group
+sns.lineplot(data=df, x="epoch", y="reward", hue="group", errorbar="sd")
+
+plt.title("Average Reward per Epoch: Curriculum vs No Curriculum")
+plt.xlabel("Epoch")
+plt.ylabel("Reward")
 plt.grid(True)
 plt.tight_layout()
 plt.show()

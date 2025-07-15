@@ -11,7 +11,7 @@ from learning.reinforcement.pytorch.per_td3 import TD3
 from learning.utils.wrappers import NormalizeWrapper, ImgWrapper, DtRewardWrapper, ActionWrapper, ResizeWrapper
 from learning.reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
 from learning.reinforcement.pytorch.per_buffer import ReplayBuffer
-from src.gym_duckietown.envs.duckietown_env import multibot_env
+from src.gym_duckietown.envs.duckietown_env import multibot_env, curriculumNav
 from pyglet.window import Window 
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ def _train(args):
     os.makedirs(models_path, exist_ok=True)
     
     # Launch the env
-    env = multibot_env(
+    env = curriculumNav(
             seed=args.seed,  # random seed
             map_name="4way_multi",
             max_steps=500001,  # we don't want the gym to reset itself
@@ -158,7 +158,7 @@ if __name__ == "__main__":
         "--start_timesteps", default=1e4, type=int
     )  # How many time steps purely random policy is run for
     parser.add_argument("--eval_freq", default=5e3, type=float)  # How often (time steps) we evaluate
-    parser.add_argument("--max_timesteps", default=4e5, type=float)  # Max time steps to run environment for
+    parser.add_argument("--max_timesteps", default=1e6, type=float)  # Max time steps to run environment for
     parser.add_argument("--save_models", action="store_true", default=True)  # Whether or not models are saved
     parser.add_argument("--expl_noise", default=0.1, type=float)  # Std of Gaussian exploration noise
     parser.add_argument("--batch_size", default=128, type=int)  # Batch size for both actor and critic
