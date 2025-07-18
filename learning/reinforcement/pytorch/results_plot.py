@@ -12,16 +12,35 @@ plt.title("Policy Evaluation Over Time")
 plt.grid(True)
 plt.show()'''
 
-data = np.load("learning/reinforcement/pytorch/runs/results/seed11/rewards.npy")
+# Load rewards
+rewards = np.load("learning/reinforcement/pytorch/runs/results/seed17/rewards.npy")
 
-window = 10  # moving average over 5 evaluation points (you can try 10 or 20 too)
-moving_avg = np.convolve(data, np.ones(window)/window, mode='valid')
+# Load collisions
+collisions = np.load("learning/reinforcement/pytorch/runs/results/seed17/collisions.npy")
 
-plt.plot(data, label="Per Eval (avg over 10 runs)", alpha=0.4)
-plt.plot(moving_avg, label=f"Moving Avg (window={window})", linewidth=2)
+# === Plot Average Reward ===
+window = 10
+reward_moving_avg = np.convolve(rewards, np.ones(window)/window, mode='valid')
+
+plt.figure()
+plt.plot(rewards, label="Per Eval (avg over episodes)", alpha=0.4)
+plt.plot(reward_moving_avg, label=f"Moving Avg (window={window})", linewidth=2)
 plt.xlabel("Evaluation step")
 plt.ylabel("Average reward")
 plt.title("Policy Evaluation Over Time")
+plt.grid(True)
+plt.legend()
+plt.show()
+
+# === Plot Collision Count ===
+collision_moving_avg = np.convolve(collisions, np.ones(window)/window, mode='valid')
+
+plt.figure()
+plt.plot(collisions, label="Collisions per Evaluation", alpha=0.4, color='r')
+plt.plot(collision_moving_avg, label=f"Moving Avg (window={window})", linewidth=2, color='darkred')
+plt.xlabel("Evaluation step")
+plt.ylabel("Collision Count")
+plt.title("Collisions Over Time")
 plt.grid(True)
 plt.legend()
 plt.show()

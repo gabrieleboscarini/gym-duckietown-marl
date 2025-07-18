@@ -6,11 +6,11 @@ import os
 import glob 
 
 
-# Folder containing all seed subfolders
-
+# Base directory containing "seed*" folders
 script_dir = os.path.dirname(os.path.abspath(__file__))
 base_results = os.path.join(script_dir, "runs", "results")
-# Collect per-seed reward arrays
+
+# Load rewards for each seed
 rewards_dict = {}
 for path in sorted(glob.glob(os.path.join(base_results, "seed*"))):
     seed = os.path.basename(path)
@@ -18,56 +18,63 @@ for path in sorted(glob.glob(os.path.join(base_results, "seed*"))):
     if os.path.exists(reward_path):
         rewards_dict[seed] = np.load(reward_path)
 
-# Save all rewards into one .npz file
+# Save to a .npz file for later use
 np.savez("rewards.npz", **rewards_dict)
-# Load your data
-#data = np.load("my_results.npz")  
-data = np.load("rewards.npz") # shape [epochs, seeds]
 
-'''# Convert to long-form DataFrame
+# Load rewards
+data = np.load("rewards.npz")
+
+# ✅ SELECT RANGE OF SEEDS HERE
+selected_seeds = [f"seed{i}" for i in range(12, 17)]
+available_seeds = [s for s in selected_seeds if s in data.files]
+
+# Prepare DataFrame
 df = pd.DataFrame([
-    {'epoch': epoch, 'reward': reward, 'seed': seed_name}
-    for seed_name in data.files
+    {'eval_step': epoch, 'reward': reward, 'seed': seed_name}
+    for seed_name in available_seeds
     for epoch, reward in enumerate(data[seed_name])
+    if epoch >= 2
 ])
 
-plt.figure(figsize=(10, 6))
-sns.set_theme(style="darkgrid", font_scale=1.5)
-#sns.lineplot(data=df, x="epoch", y="reward", hue="seed", ci=None, alpha=0.3)  # per-seed lines
-sns.lineplot(data=df, x="epoch", y="reward", errorbar="sd", color="black", label="Mean ± SD")  # average
+# Compute mean and std per evaluation step
+grouped = df.groupby("eval_step")["reward"].agg(["mean", "std"]).reset_index()
 
-plt.title("Average Reward per Epoch")
-plt.xlabel("Epoch")
-plt.ylabel("Reward")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()'''
+# Apply moving average
+window = 5
+grouped["mean_smooth"] = grouped["mean"].rolling(window=window, center=True, min_periods=1).mean()
+grouped["std_smooth"] = grouped["std"].rolling(window=window, center=True, min_periods=1).mean()
 
-all_seeds = sorted(data.files)
-
-# Define two groups
-curriculum_seeds = all_seeds[:5]
-no_curriculum_seeds = all_seeds[-5:]
-
-# Convert to long-form DataFrame with a new column: group
-df = pd.DataFrame([
-    {'epoch': epoch, 'reward': reward, 'seed': seed_name,
-     'group': 'no_curriculum' if seed_name in no_curriculum_seeds else 'curriculum'}
-    for seed_name in no_curriculum_seeds + curriculum_seeds
-    for epoch, reward in enumerate(data[seed_name])
-])
+# Set theme and color palette
+sns.set_theme(style="whitegrid", font_scale=1.5)
+cmap = plt.get_cmap("viridis")
+main_color = cmap(0.6)  # Pick a vibrant color
 
 # Plot
-plt.figure(figsize=(10, 6))
-sns.set_theme(style="darkgrid", font_scale=1.5)
+plt.figure(figsize=(12, 7))
 
-# Plot average per group
-sns.lineplot(data=df, x="epoch", y="reward", hue="group", errorbar="sd")
+# Mean line
+plt.plot(grouped["eval_step"], grouped["mean_smooth"],
+         color=main_color, linewidth=2.5, label="Mean (Smoothed)")
 
-plt.title("Average Reward per Epoch: Curriculum vs No Curriculum")
-plt.xlabel("Epoch")
-plt.ylabel("Reward")
-plt.grid(True)
+# ± SD shaded area
+plt.fill_between(
+    grouped["eval_step"],
+    grouped["mean_smooth"] - grouped["std_smooth"],
+    grouped["mean_smooth"] + grouped["std_smooth"],
+    color=main_color, alpha=0.3, label="± SD"
+)
+
+# Optional: add dashed lines for SD bounds
+plt.plot(grouped["eval_step"], grouped["mean_smooth"] - grouped["std_smooth"],
+         color=main_color, linestyle="--", linewidth=1, alpha=0.7)
+plt.plot(grouped["eval_step"], grouped["mean_smooth"] + grouped["std_smooth"],
+         color=main_color, linestyle="--", linewidth=1, alpha=0.7)
+
+# Labels and title
+plt.title("Smoothed Average Reward per Evaluation Step", fontsize=18)
+plt.xlabel("Evaluation Step", fontsize=14)
+plt.ylabel("Reward", fontsize=14)
+plt.grid(True, linestyle='--', alpha=0.6)
 plt.tight_layout()
+plt.legend()
 plt.show()

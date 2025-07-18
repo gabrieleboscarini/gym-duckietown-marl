@@ -64,7 +64,9 @@ def _train(args):
     
 
     # Evaluate untrained policy
-    evaluations = [evaluate_policy(env, policy)]
+    avg_reward, collision_count = evaluate_policy(env, policy)
+    evaluations = [avg_reward]
+    collision_counts = [collision_count]
 
     total_timesteps = 0
     timesteps_since_eval = 0
@@ -103,13 +105,16 @@ def _train(args):
                 # Evaluate episode
                 if timesteps_since_eval >= args.eval_freq:
                     timesteps_since_eval %= args.eval_freq
-                    evaluations.append(evaluate_policy(env, policy))
+                    avg_reward, collision_count = evaluate_policy(env, policy)
+                    evaluations.append(avg_reward)
+                    collision_counts.append(collision_count)
                     print("rewards at time {}: {}".format(total_timesteps, evaluations[-1]))
 
                     if args.save_models:
                         filename = os.path.join(models_path, "td3")
                         policy.save(filename= filename)
                     np.save(os.path.join(results_path, "rewards.npy"), np.array(evaluations))
+                    np.save(os.path.join(results_path, "collisions.npy"), np.array(collision_counts))
 
             # Reset environment
             env_counter += 1
@@ -179,12 +184,12 @@ def _train(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--seed", default=11, type=int)  # Sets Gym, PyTorch and Numpy seeds
+    parser.add_argument("--seed", default=17, type=int)  # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument(
         "--start_timesteps", default=1e4, type=int
     )  # How many time steps purely random policy is run for
     parser.add_argument("--eval_freq", default=5e3, type=float)  # How often (time steps) we evaluate
-    parser.add_argument("--max_timesteps", default=500000, type=float)  # Max time steps to run environment for
+    parser.add_argument("--max_timesteps", default=350000, type=float)  # Max time steps to run environment for
     parser.add_argument("--save_models", action="store_true", default=True)  # Whether or not models are saved
     parser.add_argument("--expl_noise", default=0.1, type=float)  # Std of Gaussian exploration noise
     parser.add_argument("--batch_size", default=128, type=int)  # Batch size for both actor and critic

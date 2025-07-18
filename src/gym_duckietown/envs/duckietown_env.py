@@ -1075,7 +1075,7 @@ class ego_multibot_env(Simulator):
                                        high=np.array([2,3.141,2,3,3,2,3,3,1,1,3]),
                                        dtype=np.float32)
         
-        _,self.path,self.direction = self.compute_trajectory("N2L", 20)
+        _,self.path,self.direction = self.compute_trajectory("N2S", 20)
         
         self.controller = Controller(direction='l', path=self.path, wheel_distance=0.102)
         
@@ -1187,7 +1187,7 @@ class ego_multibot_env(Simulator):
         return reward
         
         
-    def _compute_done_reward(self, actual_position, prev_position, current_goal):
+    '''def _compute_done_reward(self, actual_position, prev_position, current_goal):
         
         done_pose = self._done_pose(self.cur_pos)
         
@@ -1220,6 +1220,56 @@ class ego_multibot_env(Simulator):
             msg = ""
             done_code = "in-progress"
             
+        return reward, done, msg, done_code'''
+        
+    def _compute_done_reward(self, actual_position, prev_position, current_goal):
+        """
+        Compute reward and done condition for the current step.
+
+        Returns:
+            reward (float): reward for the step
+            done (bool): whether the episode should terminate
+            msg (str): optional debug message
+            done_code (str): reason for termination (used for evaluation/logging)
+        """
+        done_pose = self._done_pose(self.cur_pos)
+
+        # Check if agent is in a valid pose
+        valid_pose, pose_status = self._valid_pose(self.cur_pos, self.cur_angle)
+
+        if not valid_pose:
+            if pose_status == "collision":
+                reward = -10
+                done_code = "collision"
+            elif pose_status == "off-road":
+                reward = -10
+                done_code = "off-road"
+            else:
+                reward = -10
+                done_code = "invalid-pose"  # fallback, shouldn't happen
+            done = True
+            msg = f"Stopping the simulator because of {done_code}."
+
+        elif done_pose:
+            reward = 0
+            done_code = "done-pose"
+            done = True
+            msg = "Stopping the simulator because we arrived at target"
+            print("target_reached!!!")
+
+        elif self.step_count >= self.max_steps:
+            reward = 0
+            done_code = "max-steps-reached"
+            done = True
+            msg = f"Stopping the simulator because we reached max_steps = {self.max_steps}"
+
+        else:
+            # Episode continues
+            done = False
+            reward = self.new_reward_function(actual_position, prev_position, current_goal)
+            done_code = "in-progress"
+            msg = ""
+
         return reward, done, msg, done_code
         
         
@@ -1351,6 +1401,7 @@ class ego_multibot_env(Simulator):
         
         reward, done, msg, done_code = self._compute_done_reward(actual_position,prev_position, current_goal)
         misc["Simulator"]["msg"] = msg
+        misc["Simulator"]["done_code"] = done_code
         
         return self.obs, reward, done, _, misc
 

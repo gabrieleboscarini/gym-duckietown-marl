@@ -65,19 +65,25 @@ def evaluate_policy(env, policy, eval_episodes=10, max_timesteps=1500):
     low_action = env.action_space.low
     
     avg_reward = 0.0
+    collision_count = 0
     for ep in range(eval_episodes):
         obs, _ = env.reset()
         done = False
         step = 0
         total_reward = 0
+        
         while not done and step < max_timesteps:
             action = policy.select_action(np.array(obs))
             env_action = low_action + (action + 1.0) * 0.5 * (max_action - low_action)
-            obs, reward, done, _, _ = env.step(env_action)
+            obs, reward, done, _, misc = env.step(env_action)
             total_reward += reward
             #avg_reward += reward
             step += 1
             #env.render()
+            
+            if misc["Simulator"]["done_code"] == "collision":
+                collision_count +=1
+                
         print(f"Episode {ep+1}: Total reward: {total_reward:.2f}")
         avg_reward += total_reward
 
@@ -85,7 +91,7 @@ def evaluate_policy(env, policy, eval_episodes=10, max_timesteps=1500):
     print(f"\nAverage reward over {eval_episodes} episodes: {avg_reward:.2f}")
     print("---------------------------------------------")
 
-    return avg_reward
+    return avg_reward, collision_count      
 
 '''# Runs policy for X episodes and returns average reward
 # A fixed seed is used for the eval environment

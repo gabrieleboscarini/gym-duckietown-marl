@@ -1593,7 +1593,7 @@ class Simulator(gym.Env):
         # No collision with any object
         return False
 
-    def _valid_pose(self, pos: g.T3value, angle: float, safety_factor: float = 1.0) -> bool:
+    '''def _valid_pose(self, pos: g.T3value, angle: float, safety_factor: float = 1.0) -> bool:
         """
         Check that the agent is in a valid pose
 
@@ -1633,7 +1633,43 @@ class Simulator(gym.Env):
             #logger.debug(f"r_pos: {r_pos}")
             #logger.debug(f"f_pos: {f_pos}")
 
-        return res
+        return res'''
+        
+    def _valid_pose(self, pos: g.T3value, angle: float, safety_factor: float = 1.0) -> Tuple[bool, str]:
+        """
+        Check that the agent is in a valid pose
+
+        Returns:
+            (is_valid: bool, reason: str)
+            reason ∈ {"ok", "collision", "off-road"}
+        """
+        pos = _actual_center(pos, angle)
+        f_vec = get_dir_vec(angle)
+        r_vec = get_right_vec(angle)
+
+        l_pos = pos - (safety_factor * 0.5 * ROBOT_WIDTH) * r_vec
+        r_pos = pos + (safety_factor * 0.5 * ROBOT_WIDTH) * r_vec
+        f_pos = pos + (safety_factor * 0.5 * ROBOT_LENGTH) * f_vec
+
+        # Determine if all key points are drivable
+        all_drivable = (
+            self._drivable_pos(pos)
+            and self._drivable_pos(l_pos)
+            and self._drivable_pos(r_pos)
+            and self._drivable_pos(f_pos)
+        )
+
+        # Check for collisions
+        agent_corners = get_agent_corners(pos, angle)
+        no_collision = not self._collision(agent_corners)
+
+        # Log and determine result
+        if not (no_collision and all_drivable):
+            logger.debug(f"Invalid pose. Collision free: {no_collision} On drivable area: {all_drivable}")
+            return False, "collision" if not no_collision else "off-road"
+
+        return True, "ok"
+
 
     def _check_intersection_static_obstacles(self, pos: g.T3value, angle: float) -> bool:
         agent_corners = get_agent_corners(pos, angle)

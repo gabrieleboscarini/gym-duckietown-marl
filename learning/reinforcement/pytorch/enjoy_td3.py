@@ -35,7 +35,7 @@ def _enjoy():
 
     # Initialize policy
     policy = TD3(state_dim, action_dim, max_action, low_action)
-    policy.load(filename="learning/reinforcement/pytorch/runs/models/seed11/td3")
+    policy.load(filename="learning/reinforcement/pytorch/runs/models/seed17/td3")
 
     obs, _ = env.reset()
     done = False
